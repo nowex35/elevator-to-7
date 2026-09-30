@@ -434,7 +434,7 @@ function buildNight(seed) {
   // 深夜なので、ほとんどの階は誰もいない。住人がいるのは約3割(6階は通夜なので約6割)
   for (const f of floors) {
     ev[f] = rnd() < (f === 6 ? .6 : .3) ? { ...pick(ROUTINE[f]), anomaly: null } : { p: null, board: false, anomaly: null };
-    if (f === 3 && rnd() < .9) ev[f] = { ...HOME.a, anomaly: null }; // おじさんは、ほぼ毎晩3階にいる
+    if (f === 3 && rnd() < .55) ev[f] = { ...HOME.a, anomaly: null }; // おじさんは、6割ほどの夜に3階にいる(出すぎたので 2026-09-30 に 9割から下げた)
     if (f === 6 && ev[f].p && rnd() < .07) ev[f] = { p: null, board: false, wake: true, cap: "wake", anomaly: null }; // まれに通夜の列(異変ではない)
     // 普通の揺らぎでは、前の階と同じ置き物は出さない(出ると「ついてくる物」に見えてしまう)
     const before = f > 2 ? ev[f - 1].env.props : [];
