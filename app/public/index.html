@@ -63,6 +63,17 @@
   .fx .out.o3 { background:radial-gradient(ellipse 90% 70% at 50% 40%, rgba(0,0,0,.93) 45%, transparent 100%); }
   .fx.going .out.o1 { opacity:1; transition-delay:1.4s; } .fx.going .out.o2 { opacity:1; transition-delay:2.6s; } .fx.going .out.o3 { opacity:1; transition-delay:3.8s; }
   .poster .note { font-size:2.4cqw; color:#555; margin-top:.8cqw; line-height:1.4; }
+  .scene { inset:0; }
+  .scene > * { position:absolute; }
+  /* 近づいてくる人:扉が開いてから、奥から扉の前まで歩いてくる */
+  .corr .walking { transition:left 4.4s cubic-bezier(.4,0,.9,.6), top 4.4s cubic-bezier(.4,0,.9,.6), width 4.4s cubic-bezier(.4,0,.9,.6), height 4.4s cubic-bezier(.4,0,.9,.6), filter 4.4s; }
+  .corr .person.walking.infar { filter:none; }
+  /* 7階に近づくと、視界の縁が赤くもやがかかり、鼓動に合わせて脈打つ */
+  .heart { inset:0; pointer-events:none; opacity:0; transition:opacity 1.2s;
+    background:radial-gradient(ellipse 72% 60% at 50% 44%, transparent 45%, rgba(110,0,0,.45) 78%, rgba(55,0,0,.92) 100%); mix-blend-mode:multiply; }
+  /* 異変がないのに閉めた:階数表示が「ビビッ」と乱れる */
+  .ind.err { animation:err .42s steps(1) 1; }
+  @keyframes err { 0% { color:#ff2020; transform:translateX(-.8cqw); } 25% { opacity:.25; transform:translateX(.8cqw); } 50% { color:#ff2020; opacity:1; transform:translateX(-.4cqw); } 75% { opacity:.4; transform:none; } 100% { opacity:1; } }
   .grain { inset:0; pointer-events:none; opacity:.09; mix-blend-mode:overlay; }
   .vig { inset:0; pointer-events:none; background:radial-gradient(ellipse at 50% 42%, transparent 52%, rgba(0,0,0,.6) 100%); }
   .dim { inset:0; background:#000; opacity:0; pointer-events:none; transition:opacity .15s; }
@@ -174,6 +185,7 @@
   .log .rep h4 { margin:0 0 1cqw; font:700 3.4cqw "Hiragino Mincho ProN","Yu Mincho",serif; }
   .log .rep .it { display:flex; justify-content:space-between; gap:2cqw; font-size:3cqw; }
   .log .rep .it .st { color:#8a6a1e; margin-right:1.5cqw; }
+  .log .rep .it.miss { color:#6b2a20; }
   .log .rep .tot { display:flex; justify-content:space-between; font-weight:700; margin-top:1cqw; font-size:3.6cqw; }
   .log .rep .tot.lost span:last-child { text-decoration:line-through; color:#888; }
   .log .rep .void { margin-top:1cqw; font-size:2.8cqw; color:#6b2a20; font-family:"Hiragino Mincho ProN","Yu Mincho",serif; }
@@ -184,6 +196,8 @@
 </head>
 <body>
 <div class="stage" id="stage">
+  <!-- 景色(廊下と扉)。心臓の鼓動で揺らすのはここだけ(表示・ボタンは揺らさない) -->
+  <div class="scene" id="scene">
   <img class="L" id="plate" alt="">
   <div class="L" id="bgAnom"></div>
   <div class="corr" id="corr"></div>
@@ -192,8 +206,10 @@
     <div class="door l"><img src="parts/door-l.webp" alt=""><div class="rfix light" id="litL"></div><div class="rfix mirror" id="mirL"></div></div>
     <div class="door r"><img src="parts/door-r.webp" alt=""><div class="rfix light" id="litR"></div><div class="rfix mirror" id="mirR"></div></div>
   </div>
+  </div>
   <canvas class="grain" id="grain"></canvas>
   <div class="vig"></div>
+  <div class="heart" id="heart"></div>
   <div class="hud"><div class="ind" id="ind"><span class="arr">▲</span><span id="fl">1</span></div></div>
   <div class="paper" id="paper" title="貼り紙"><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <div class="lang" id="langBox">
@@ -237,13 +253,14 @@ const PEOPLE = {
   a_bow:    { src: "pose-a-bow.webp",    of: "a" },
   a_back:   { src: "pose-a-back.webp",   of: "a" },
   kid_back: { src: "pose-kid-back.webp", of: "kid" },
+  woman_bare: { src: "p-woman-barefoot.webp", of: "woman" }, // 裸足の住人(靴だけを脱がせた別カット)
 };
 // 人物画像(parts/*.webp)の幅と高さ。画像の到着を待たずに配置を決められるよう、表にしておく。
 // 画像を差し替えたら測り直す(全員を同じ倍率で縮めているので、高さの比が姿勢違いの縮尺になる)
 const DIM = {
   a: [270, 830], salary: [296, 873], pajama: [349, 877], deliv: [327, 862], kid: [330, 886], hood: [268, 858],
   monk: [287, 866], granny: [271, 871], woman: [288, 890], mourner: [274, 876], funeral: [334, 842], oldman: [289, 884],
-  a_bow: [250, 803], a_back: [277, 825], kid_back: [271, 863],
+  a_bow: [250, 803], a_back: [277, 825], kid_back: [271, 863], woman_bare: [288, 885],
 };
 const AR = {}, NH = {}; // 縦横比と高さ
 for (const [k, [w, h]] of Object.entries(DIM)) { AR[k] = w / h; NH[k] = h; }
@@ -260,7 +277,7 @@ const POS = {
 // ============ 住人の「いつも」(階ごとの候補。夜ごとにどれか1つ) ============
 // board: 乗るか / dest: 降りる階 / press: 自分で押すボタン / cap: 字幕 / at: 立ち位置
 const ROUTINE = {
-  2: [{ p: "salary", board: true, dest: 4, at: "board" },
+  2: [{ p: "salary", board: true, dest: 5, at: "board" }, // 4階は押されない階(R8)なので、4階では降りない
       { p: "pajama", board: false, at: "pass", cap: "pajama" }],
   3: [{ p: "a", board: true, dest: 5, at: "board", bow: true },
       { p: "deliv", board: true, dest: 6, at: "board" }],
@@ -287,11 +304,12 @@ const T = {
       R5: "廊下に履物がそろえて置かれている階では、扉をお閉めください。",
       R6: "住人の方が、いつもと違う階からお乗りになった場合は、扉をお閉めください。",
       R7: "お坊様がお降りになる階では、扉が閉まるまで頭をお下げください。",
-      R8: "22時以降、4階のボタンは押さないでください。",
+      R8: "22時以降、どなたかが4階のボタンを押された場合は、扉をお閉めください。",
       R9: "扉に映るご自身に、話しかけないでください。",
       R11: "前の階と同じ物が廊下に置かれている場合は、扉をお閉めください。",
       R12: "扉を開けたあと、廊下の明かりが奥から消えていく場合は、扉をお閉めください。",
       R13: "いつも挨拶をされる方が、挨拶をされない場合は、扉をお閉めください。",
+      R14: "廊下の奥から近づいてくる方がいても、お待ちにならず、扉をお閉めください。",
     },
     catchAll: "上記のほか、少しでも異常を感じた場合は、扉をお閉めください。",
     note: "※廊下の照明のちらつきは点検中のためです。お気になさらないでください。",
@@ -303,7 +321,9 @@ const T = {
     home2: "7階に帰り着いた", cutAt: f => `記録は${f}階で途切れている`,
     ph: { QUIET: "静かな階", R: n => `${n}に会った`, WAKE_LINE: "通夜の列", SHOES: "そろえられた赤い靴", OLDMAN: "裸足の老人", WRONG_FLOOR: n => `いつもと違う階の${n}`, MOURNER_OFF6: "6階ではない喪服",
       LIGHTS_OUT: "消えていく明かり", OJISAN_NO_NOD: "会釈しない管理人", FINGERS: "隙間の指", INDICATOR_13: "13階", CAPTION_707: "「707の方ですよね」", PROP_FOLLOW: n => `ついてくる${n}`, DELIV_LABEL: "707号室宛の荷物",
-      KID_NOBUTTON: "行き先を押さない子", MONK_7: "7階まで行くお坊さん", REBOARD: n => `また乗ってくる${n}`, ALL_BUTTONS: "全部点いたボタン", HOME_EARLY: "早すぎる「おかえりなさい」", OJISAN_BACK: "背を向けた管理人", KID_BACK: "背を向けた男の子" },
+      KID_NOBUTTON: "行き先を押さない子", MONK_7: "7階まで行くお坊さん", REBOARD: n => `また乗ってくる${n}`, ALL_BUTTONS: "全部点いたボタン", HOME_EARLY: "早すぎる「おかえりなさい」", OJISAN_BACK: "背を向けた管理人", KID_BACK: "背を向けた男の子",
+      APPROACH: n => `近づいてくる${n}`, DOORS_AJAR: "少しずつ開いたドア", PLATE_SWAP: "いつもと違う廊下", IND_STUCK: "進まない階数表示", BAREFOOT: n => `裸足の${n}`, PRESS_4: "押された4階" },
+    miss: "閉めなくてよかった扉",
     props: { tricycle: "三輪車", box: "段ボール箱", umbrella: "ビニール傘" },
     share: "Xでシェア", xBtn: L => `${L}<span>でシェア</span>`, line: "LINEで送る", image: "画像で共有", copy: "コピー", copied: "コピーしました", replay: "もう一度プレイ",
     saveHint: "長押しで保存できます", save: "画像を保存", close: "閉じる",
@@ -315,7 +335,9 @@ const T = {
       KID_NOBUTTON: "男の子は、行き先のボタンを押さなかった。", PROP_FOLLOW: (n, h, pr) => `${pr}が、前の階からついてきていた。`, LIGHTS_OUT: "廊下の明かりが、奥から消えていった。",
       OJISAN_NO_NOD: "いつも会釈する管理人が、会釈しなかった。", FINGERS: "手前のドアの隙間から、指が出ていた。", INDICATOR_13: "階数表示が「13」だった。この建物に13階はない。",
       CAPTION_707: "教えていないのに、あなたの部屋番号を知っていた。", DELIV_LABEL: "荷物の宛名は、あなたの部屋だった。", MONK_7: "通夜は6階なのに、お坊さんは7階まで行くと言った。",
-      ALL_BUTTONS: "扉が開いた瞬間、すべてのボタンが点いた。", HOME_EARLY: "そこは、まだ7階ではなかった。", OJISAN_BACK: "いつも会釈する管理人が、こちらに背を向けて立っていた。", KID_BACK: "男の子は、ずっとこちらに背を向けていた。", NORMAL: "この階には、何もおかしなことはなかった。" },
+      ALL_BUTTONS: "扉が開いた瞬間、すべてのボタンが点いた。", HOME_EARLY: "そこは、まだ7階ではなかった。", OJISAN_BACK: "いつも会釈する管理人が、こちらに背を向けて立っていた。", KID_BACK: "男の子は、ずっとこちらに背を向けていた。", NORMAL: "この階には、何もおかしなことはなかった。",
+      APPROACH: n => `${n}が、廊下の奥から近づいてきていた。`, DOORS_AJAR: "廊下のドアが、全部少しずつ開いていた。",
+      PLATE_SWAP: "廊下の目印が、その階のものではなかった。", IND_STUCK: "階数表示が、前の階のまま進んでいなかった。", BAREFOOT: n => `${n}は、裸足だった。`, PRESS_4: n => `${n}が、4階のボタンを押した。` },
     gameName: "7階行きのエレベーター", tag: "#7階行きのエレベーター", room: "707号室 様",
   },
   en: {
@@ -329,11 +351,12 @@ const T = {
       R5: "If shoes have been neatly placed in the hallway, please close the doors.",
       R6: "If a resident boards from a floor they don't usually use, please close the doors.",
       R7: "On the floor where the monk gets off, keep your head bowed until the doors close.",
-      R8: "After 10 p.m., do not press the button for the 4th floor.",
+      R8: "After 10 p.m., if anyone presses the button for the 4th floor, please close the doors.",
       R9: "Do not speak to yourself in the reflection of the doors.",
       R11: "If the same object from the previous floor is placed in this hallway, please close the doors.",
       R12: "If the hallway lights go out one by one after you open the doors, please close the doors.",
       R13: "If someone who always greets you does not greet you, please close the doors.",
+      R14: "If someone comes toward you from the far end of the hallway, do not wait. Please close the doors.",
     },
     catchAll: "In any other case, if anything at all feels wrong, please close the doors.",
     note: "* Flickering hallway lights are due to maintenance. Please disregard them.",
@@ -345,7 +368,9 @@ const T = {
     home2: "Made it home to 7", cutAt: f => `The log ends on floor ${f}`,
     ph: { QUIET: "A quiet floor", R: n => `met ${n}`, WAKE_LINE: "The wake procession", SHOES: "Red shoes, neatly placed", OLDMAN: "The barefoot old man", WRONG_FLOOR: n => `${n}, on the wrong floor`, MOURNER_OFF6: "Mourning clothes, wrong floor",
       LIGHTS_OUT: "Lights going out", OJISAN_NO_NOD: "The caretaker who didn't nod", FINGERS: "Fingers in the gap", INDICATOR_13: "The 13th floor", CAPTION_707: "\"You're from 707\"", PROP_FOLLOW: n => `The ${n} that follows`, DELIV_LABEL: "A parcel for Room 707",
-      KID_NOBUTTON: "The boy who pressed nothing", MONK_7: "The monk going to 7", REBOARD: n => `${n}, again`, ALL_BUTTONS: "Every button lit", HOME_EARLY: "\"Welcome home\", too early", OJISAN_BACK: "The caretaker with his back turned", KID_BACK: "The boy with his back turned" },
+      KID_NOBUTTON: "The boy who pressed nothing", MONK_7: "The monk going to 7", REBOARD: n => `${n}, again`, ALL_BUTTONS: "Every button lit", HOME_EARLY: "\"Welcome home\", too early", OJISAN_BACK: "The caretaker with his back turned", KID_BACK: "The boy with his back turned",
+      APPROACH: n => `${n[0].toUpperCase() + n.slice(1)}, coming closer`, DOORS_AJAR: "Every door left ajar", PLATE_SWAP: "The wrong hallway", IND_STUCK: "The display that didn't move", BAREFOOT: n => `${n[0].toUpperCase() + n.slice(1)}, barefoot`, PRESS_4: "Someone pressed 4" },
+    miss: "A door you didn't need to close",
     props: { tricycle: "tricycle", box: "box", umbrella: "umbrella" },
     share: "Share on X", xBtn: L => `<span>Share on</span>${L}`, line: "Send on LINE", image: "Share image", copy: "Copy", copied: "Copied", replay: "Play again",
     saveHint: "Press and hold to save", save: "Save image", close: "Close",
@@ -357,7 +382,9 @@ const T = {
       KID_NOBUTTON: "The boy never pressed a floor button.", PROP_FOLLOW: (n, h, pr) => `The ${pr} had followed you from the floor below.`, LIGHTS_OUT: "The hallway lights were going out, one by one.",
       OJISAN_NO_NOD: "The caretaker, who always nods, did not nod.", FINGERS: "Fingers were showing through the gap of the nearest door.", INDICATOR_13: "The display read \"13\". This building has no 13th floor.",
       CAPTION_707: "They knew your room number. You never told them.", DELIV_LABEL: "The parcel was addressed to your room.", MONK_7: "The wake is on 6, yet the monk said he was going to 7.",
-      ALL_BUTTONS: "Every button lit up the moment the doors opened.", HOME_EARLY: "It wasn't the 7th floor yet.", OJISAN_BACK: "The caretaker, who always nods, stood with his back to you.", KID_BACK: "The boy never once turned to face you.", NORMAL: "Nothing was wrong on that floor." },
+      ALL_BUTTONS: "Every button lit up the moment the doors opened.", HOME_EARLY: "It wasn't the 7th floor yet.", OJISAN_BACK: "The caretaker, who always nods, stood with his back to you.", KID_BACK: "The boy never once turned to face you.", NORMAL: "Nothing was wrong on that floor.",
+      APPROACH: n => `${n[0].toUpperCase() + n.slice(1)} was coming toward you from the far end of the hallway.`, DOORS_AJAR: "Every door in the hallway had been left slightly open.",
+      PLATE_SWAP: "The hallway belonged to a different floor.", IND_STUCK: "The display was still showing the floor below.", BAREFOOT: n => `${n[0].toUpperCase() + n.slice(1)} was barefoot.`, PRESS_4: n => `${n[0].toUpperCase() + n.slice(1)} pressed the button for 4.` },
     gameName: "The Elevator to 7", tag: "#ElevatorTo7", room: "Room 707",
   },
 };
@@ -383,8 +410,11 @@ const PTS = {
   SHOES: [510, 2], OLDMAN: [470, 2], WRONG_FLOOR: [560, 2], MOURNER_OFF6: [530, 2], LIGHTS_OUT: [620, 2], FINGERS: [490, 2], INDICATOR_13: [450, 2],
   CAPTION_707: [580, 2], PROP_FOLLOW: [730, 2], OJISAN_NO_NOD: [680, 2],
   KID_NOBUTTON: [1640, 3], MONK_7: [1480, 3], DELIV_LABEL: [3110, 4], REBOARD: [2960, 4], ALL_BUTTONS: [3240, 4], HOME_EARLY: [9870, 5], OJISAN_BACK: [1560, 3], KID_BACK: [1720, 3],
+  // 新しい異変(★は10万夜で測った出る割合から。難しいものは★2の中で点を高めにする)
+  APPROACH: [480, 2], DOORS_AJAR: [460, 2], PLATE_SWAP: [720, 2], IND_STUCK: [700, 2], PRESS_4: [690, 2], BAREFOOT: [1540, 3],
 };
-const ARULE = { WRONG_FLOOR: "R6", REBOARD: "R6", MOURNER_OFF6: "R2", OLDMAN: "R3", SHOES: "R5", KID_NOBUTTON: "R1", PROP_FOLLOW: "R11", LIGHTS_OUT: "R12", OJISAN_NO_NOD: "R13", FINGERS: null, DELIV_LABEL: null, INDICATOR_13: null, CAPTION_707: null, MONK_7: null, ALL_BUTTONS: null, HOME_EARLY: null, OJISAN_BACK: null, KID_BACK: null };
+const ARULE = { WRONG_FLOOR: "R6", REBOARD: "R6", MOURNER_OFF6: "R2", OLDMAN: "R3", SHOES: "R5", KID_NOBUTTON: "R1", PROP_FOLLOW: "R11", LIGHTS_OUT: "R12", OJISAN_NO_NOD: "R13", FINGERS: null, DELIV_LABEL: null, INDICATOR_13: null, CAPTION_707: null, MONK_7: null, ALL_BUTTONS: null, HOME_EARLY: null, OJISAN_BACK: null, KID_BACK: null,
+  APPROACH: "R14", BAREFOOT: "R3", PRESS_4: "R8", DOORS_AJAR: null, PLATE_SWAP: null, IND_STUCK: null };
 // 三輪車と傘は左の壁ぎわで重なるので、同じ階には出さない
 const CLASH = [["tricycle", "umbrella"]];
 const unclash = (props, keep, rnd) => { for (const [a, b] of CLASH) if (props.includes(a) && props.includes(b)) { const drop = keep === a ? b : keep === b ? a : (rnd() < .5 ? a : b); props = props.filter(x => x !== drop); } return props; };
@@ -397,6 +427,8 @@ const LIGHTS = ["on", "flicker", "fardark", "shadowed"];
 const SOUNDS = ["none", "rain", "tv"];
 function buildNight(seed) {
   const rnd = mulberry32(seed), pick = a => a[Math.floor(rnd() * a.length)];
+  // 乱数で順番を決める(Fisher–Yates)。sort(() => rnd() - .5) は並び順がブラウザ任せで、同じ番号でも夜が変わるので使わない
+  const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const floors = [2, 3, 4, 5, 6];
   const ev = {};
   // 深夜なので、ほとんどの階は誰もいない。住人がいるのは約3割(6階は通夜なので約6割)
@@ -410,7 +442,7 @@ function buildNight(seed) {
   }
   // 異変の数: 2〜3(うち1つは説明されない異変)
   const n = rnd() < .5 ? 2 : 3;
-  const af = [...floors].sort(() => rnd() - .5).slice(0, n).sort();
+  const af = shuffle(floors).slice(0, n).sort((a, b) => a - b);
   const uFloor = pick(af);
   const set = (f, o) => { ev[f] = { ...o, env: ev[f].env }; };
   for (const f of af) {
@@ -424,6 +456,8 @@ function buildNight(seed) {
       if (f >= 4 && rnd() < .035) U.push("HOME_EARLY"); // とてもレア
       if (f === 3 && ev[f].p === "a" && rnd() < .6) U.push("OJISAN_BACK");
       if (f === 4 && rnd() < .5) U.push("KID_BACK");
+      U.push("DOORS_AJAR", "PLATE_SWAP");
+      if (f >= 3) U.push("IND_STUCK"); // 2階だと「1」が出て、1階に戻ったように見えるので出さない
       const u = pick(U);
       // 指は右手前のドア。扉の正面に立つ人とは重ならないので、住人はそのまま(横に立つ人とは重なるので消す)
       if (u === "FINGERS") { if (ev[f].at === "side") set(f, { p: null, board: false, anomaly: u }); else ev[f].anomaly = u; }
@@ -435,6 +469,14 @@ function buildNight(seed) {
       else if (u === "HOME_EARLY") set(f, { p: null, board: false, wake: true, cap: "home", anomaly: u });
       else if (u === "OJISAN_BACK") set(f, { ...HOME.a, p: "a_back", bow: false, anomaly: u });
       else if (u === "KID_BACK") set(f, { ...HOME.kid, p: "kid_back", press: null, anomaly: u });
+      // 開いたドアのうち手前の1枚は、横に立つ人と重なるので、そのときは人を消す(指と同じ)
+      else if (u === "DOORS_AJAR") { if (ev[f].at === "side") set(f, { p: null, board: false, anomaly: u }); else ev[f].anomaly = u; }
+      else if (u === "IND_STUCK") ev[f].anomaly = u;
+      // 別の階の背景(目印がその階のものではない)。3階と7階は同じ絵なので、絵が違うものから選ぶ
+      else if (u === "PLATE_SWAP") {
+        ev[f].anomaly = u; ev[f].plate = pick([...new Set(Object.values(PLATE))].filter(x => x !== PLATE[f]));
+        if (ev[f].plate === PLATE[2]) ev[f].env.props = ev[f].env.props.filter(x => x !== "tricycle"); // 2階のママチャリと三輪車は重なる
+      }
       continue;
     }
     const prev = ev[f - 1];
@@ -442,6 +484,9 @@ function buildNight(seed) {
     if (f !== 3) cands.push("SHOES"); // 3階はおじさんが扉の前に立つので、靴が隠れる
     if (f !== 6) cands.push("MOURNER_OFF6");
     if (f === 4) cands.push("KID_NOBUTTON");
+    if (f <= 5) cands.push("APPROACH");  // 奥に立つフードの男が、近づいてくる(R14)
+    if (f === 5) cands.push("BAREFOOT"); // 5階の女が裸足(R3)
+    if (f <= 3) cands.push("PRESS_4");   // 乗ってきた住人が4を押す(R8)
     if (prev && prev.p && prev.board && !prev.anomaly && !af.includes(f - 1)) cands.push("REBOARD");
     if (prev && prev.env.props.length) cands.push("PROP_FOLLOW", "PROP_FOLLOW");
     // 3階におじさんがいる夜は、おじさんがいるまま起きる異変を優先する(ほぼ毎晩3階にいるように)
@@ -455,6 +500,9 @@ function buildNight(seed) {
     else if (kind === "SHOES") set(f, { p: null, board: false, anomaly: kind }); // 靴は人に隠れないよう無人の階に置く
     else if (kind === "LIGHTS_OUT") { ev[f].anomaly = kind; ev[f].env.lights = "on"; }
     else if (kind === "OJISAN_NO_NOD") set(f, { ...HOME.a, bow: false, anomaly: kind });
+    else if (kind === "APPROACH") set(f, { p: "hood", board: true, at: "far", approach: true, anomaly: kind });
+    else if (kind === "BAREFOOT") set(f, { ...HOME.woman, p: "woman_bare", anomaly: kind });
+    else if (kind === "PRESS_4") set(f, { ...pick(ROUTINE[f].filter(r => r.board)), press: 4, anomaly: kind });
     else if (kind === "PROP_FOLLOW") { ev[f].anomaly = kind; ev[f].follow = pick(prev.env.props); ev[f].env.props = unclash([...new Set([...ev[f].env.props, ev[f].follow])], ev[f].follow, rnd); }
   }
   // 「ついてくる物」の整合性を、変化がなくなるまで直す
@@ -474,7 +522,7 @@ function buildNight(seed) {
   }
   // 貼り紙: 起きる異変のルール + 埋め草で 5〜6 個
   const need = new Set(af.map(f => ARULE[ev[f].anomaly]).filter(Boolean));
-  const pool = ["R1", "R2", "R3", "R5", "R6", "R7", "R8", "R9", "R11", "R12", "R13"].filter(r => !need.has(r)).sort(() => rnd() - .5);
+  const pool = shuffle(["R1", "R2", "R3", "R5", "R6", "R7", "R8", "R9", "R11", "R12", "R13", "R14"].filter(r => !need.has(r)));
   const size = rnd() < .5 ? 5 : 6;
   const rules = [...need, ...pool.slice(0, Math.max(0, size - need.size))].sort((x, y) => +x.slice(1) - +y.slice(1));
   return { ev, rules };
@@ -491,13 +539,14 @@ function nightAssets(N) {
   // 見逃したときに扉に映る老人と、その一撃の顔は、どの夜にも出うる
   const s = new Set(["corridor.webp"]), add = k => s.add(PEOPLE[k].src), wakeLine = () => ["funeral", "mourner", "monk"].forEach(add);
   for (const [f, e] of Object.entries(N.ev)) {
-    s.add(PLATE[f]);
+    s.add(e.plate || PLATE[f]);
     if (e.p) add(e.p);
     if (e.anomaly) { const d = deathOf(e); if (d.refl) add(d.refl); s.add(faceSrc(d.face)); } // ドボンで映る人と、迫る顔
     if (e.bow) add("a_bow");
     if (e.wake || SELF_REF.has(e.anomaly)) wakeLine(); // 通夜の列は、6階と7階の結末に出る
     for (const pr of e.env?.props || []) s.add(`prop-${pr}.webp`);
     if (e.anomaly === "SHOES" || e.anomaly === "FINGERS") s.add(`anom-${e.anomaly.toLowerCase()}.webp`);
+    if (e.anomaly === "DOORS_AJAR") s.add("anom-doors.webp");
   }
   return [...s];
 }
@@ -508,11 +557,18 @@ function prepareNight() { ready = Promise.all(nightAssets(NIGHT).map(preload)); 
 const $ = id => document.getElementById(id);
 const stage = $("stage");
 const pct = (v, tot) => (v / tot * 100) + "%";
+// 人物と足元の影の位置(941x1672 座標を % に)。近づいてくる人は、これを書き換えて動かす
+function personBox(key, pos) {
+  const pp = PEOPLE[key], h = pos.h * pp.s, w = h * AR[key];
+  return { person: { left: pct(pos.cx - w / 2, 941), top: pct(pos.feet - h, 1672), height: pct(h, 1672), width: pct(w, 941) },
+    shadow: { left: pct(pos.cx - w * .75, 941), top: pct(pos.feet - 26, 1672), width: pct(w * 1.5, 941), height: pct(60, 1672) } };
+}
+const css = o => Object.entries(o).map(([k, v]) => `${k}:${v}`).join(";");
 function personHTML(key, pos, extra = "", withShadow = true) {
-  const pp = PEOPLE[key], h = pos.h * pp.s, w = h * AR[key], left = pos.cx - w / 2, top = pos.feet - h;
+  const pp = PEOPLE[key], b = personBox(key, pos);
   let s = "";
-  if (withShadow) s += `<div class="shadow" style="left:${pct(pos.cx - w * .75, 941)};top:${pct(pos.feet - 26, 1672)};width:${pct(w * 1.5, 941)};height:${pct(60, 1672)}"></div>`;
-  s += `<div class="person ${extra}" data-p="${key}" style="left:${pct(left, 941)};top:${pct(top, 1672)};height:${pct(h, 1672)};width:${pct(w, 941)}">
+  if (withShadow) s += `<div class="shadow" style="${css(b.shadow)}"></div>`;
+  s += `<div class="person ${extra}" data-p="${key}" style="${css(b.person)}">
     <img src="${P + pp.src}" alt=""><div class="shade" style="-webkit-mask-image:url(${P + pp.src});mask-image:url(${P + pp.src})"></div></div>`;
   return s;
 }
@@ -582,8 +638,24 @@ function sScare() { if (!AC) return; const t0 = AC.currentTime;
   for (const f of [622, 659, 932, 1245]) { const o = AC.createOscillator(); o.type = "sawtooth"; o.frequency.setValueAtTime(f, t0); o.frequency.exponentialRampToValueAtTime(f * .94, t0 + .5); const lp = AC.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 3200; o.connect(lp); env(lp, t0, .003, .05, .5); o.start(t0); o.stop(t0 + .6); }
   const k = AC.createOscillator(); k.frequency.setValueAtTime(90, t0); k.frequency.exponentialRampToValueAtTime(35, t0 + .3); env(k, t0, .002, .4, .45); k.start(t0); k.stop(t0 + .5); }
 // 環境音を消す(一撃の前の「間」)。次に昇るとき sTravel で戻る
-function hush() { if (!AC) return; const t0 = AC.currentTime; for (const g of [hum.g.gain, hum.ng.gain]) { g.cancelScheduledValues(t0); g.setValueAtTime(g.value, t0); g.linearRampToValueAtTime(0, t0 + .6); } }
+function hush() { heartbeat(0); if (!AC) return; const t0 = AC.currentTime; for (const g of [hum.g.gain, hum.ng.gain]) { g.cancelScheduledValues(t0); g.setValueAtTime(g.value, t0); g.linearRampToValueAtTime(0, t0 + .6); } }
 function sDrop() { if (!AC) return; const t0 = AC.currentTime, o = AC.createOscillator(); o.frequency.setValueAtTime(120, t0); o.frequency.exponentialRampToValueAtTime(30, t0 + 1.5); env(o, t0, .01, .25, 1.6); o.start(t0); o.stop(t0 + 1.8); }
+// 異変がないのに閉めた:短いブザーが2回(何を間違えたかは言わない)
+function sBuzz() { if (!AC) return; const t0 = AC.currentTime;
+  for (const dt of [0, .14]) for (const f of [110, 166]) { const o = AC.createOscillator(); o.type = "square"; o.frequency.value = f; const lp = AC.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1800; o.connect(lp); env(lp, t0 + dt, .004, .05, .09); o.start(t0 + dt); o.stop(t0 + dt + .12); } }
+// 鼓動(ドクン、ドクン)。低い音はスマホのスピーカーで聞こえにくいので、こもったノイズも重ねる
+function sHeart(k) { if (!AC) return; const t0 = AC.currentTime;
+  for (const [dt, v] of [[0, 1], [.19, .55]]) {
+    const o = AC.createOscillator(); o.frequency.setValueAtTime(70, t0 + dt); o.frequency.exponentialRampToValueAtTime(40, t0 + dt + .14); env(o, t0 + dt, .008, .34 * k * v, .17); o.start(t0 + dt); o.stop(t0 + dt + .26);
+    const n = AC.createBufferSource(); n.buffer = AC.noise; const lp = AC.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 260; n.connect(lp); env(lp, t0 + dt, .005, .22 * k * v, .12); n.start(t0 + dt); n.stop(t0 + dt + .2);
+  } }
+// 耳鳴り(じんじん)。6階から先だけ、ごく小さく
+let ring = null;
+function sRing(on) {
+  if (!AC) return;
+  if (on && !ring) { const o = AC.createOscillator(); o.frequency.value = 6300; const g = AC.createGain(); g.gain.value = 0; g.gain.linearRampToValueAtTime(.005, AC.currentTime + 2); o.connect(g).connect(AC.destination); o.start(); ring = { o, g }; }
+  if (!on && ring) { const t1 = AC.currentTime; ring.g.gain.cancelScheduledValues(t1); ring.g.gain.setValueAtTime(ring.g.gain.value, t1); ring.g.gain.linearRampToValueAtTime(0, t1 + .4); ring.o.stop(t1 + .5); ring = null; }
+}
 
 // ============ 進行 ============
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -592,7 +664,8 @@ let floor = 1, riders = [], log = [], seen = [], decide = null, opener = null, e
 const phKey = e => e.anomaly || (e.wake ? "WAKE_LINE" : e.p ? "R_" + e.p : "QUIET");
 const phName = e => { const k = phKey(e), ph = t().ph, n = e.p ? PEOPLE[e.p][lang] : "";
   if (k.startsWith("R_")) return ph.R(n); if (k === "PROP_FOLLOW") return ph[k](t().props[e.follow]); return typeof ph[k] === "function" ? ph[k](n) : ph[k]; };
-const bank = () => seen.reduce((a, s) => a + s.pts, 0);
+// 減点(閉めなくてよかった扉)で合計が負になっても、0 で止める(サーバーは 0 未満を受け付けない)
+const bank = () => Math.max(0, seen.reduce((a, s) => a + s.pts, 0));
 // スコアは結果画面でだけ見せる(プレー中は出さない)。
 // 1つの現象の点 = 基本点(★) × 階の高さ × 連続で開けた数 × 開けるまでのためらい × 反応の速さ(異変のみ) × 暗さ
 const DOOR_OPEN_MS = 6000;
@@ -608,19 +681,56 @@ const clock = i => `02:${String(13 + i).padStart(2, "0")}`;
 const riderPos = i => ({ cx: 380 + i * 170, feet: 1270, h: 700 });
 async function openDoors() { sDoor(); stage.classList.add("open"); await wait(950); }
 async function closeDoors() { sDoor(); stage.classList.remove("open"); await wait(950); }
+// ============ 鼓動:7階に近づくほど速く強く(視界の縁が赤く脈打ち、景色が揺れる) ============
+// 階 → [1分あたりの拍数, 強さ 0〜1]。2階では鳴らさない。7階の扉が開くか、ドボンや結果画面で止める
+const BEAT = { 3: [62, .25], 4: [74, .45], 5: [88, .65], 6: [104, .85], 7: [124, 1] };
+const calm = matchMedia("(prefers-reduced-motion: reduce)"); // 揺れで気分が悪くなる人向けに、揺らさない(赤い縁と音だけ)
+let beat = null;
+function heartbeat(f) {
+  const b = BEAT[f], h = $("heart");
+  if (!b) { if (beat) clearTimeout(beat.timer); beat = null; h.style.opacity = 0; sRing(false); return; }
+  const [bpm, k] = b;
+  h.style.opacity = (.2 + .6 * k).toFixed(2); sRing(k >= .85);
+  if (beat) { beat.bpm = bpm; beat.k = k; return; }
+  beat = { bpm, k, timer: 0 };
+  const tick = () => { if (!beat) return; thump(beat.k); beat.timer = setTimeout(tick, 60000 / beat.bpm); };
+  tick();
+}
+function thump(k) {
+  sHeart(k);
+  const h = $("heart"), o = +h.style.opacity || 0;
+  h.animate([{ opacity: o }, { opacity: Math.min(1, o + .12 + .25 * k), offset: .18 }, { opacity: o }], { duration: 520, easing: "ease-out" });
+  if (calm.matches) return;
+  const a = .15 + .75 * k, z = 1 + a * .022, r = () => (Math.random() * 2 - 1) * a;
+  $("scene").animate([{ transform: "none" }, { transform: `translate(${r()}%, ${r()}%) scale(${z})`, offset: .15 }, { transform: `translate(${r() * .5}%, ${r() * .5}%) scale(${1 + a * .01})`, offset: .45 }, { transform: "none" }], { duration: 420, easing: "ease-out" });
+}
+// 近づいてくる人:扉が開いて少ししたら、奥から扉の前まで歩いてくる(影も一緒に)
+function approach(p) {
+  const el = $("corr").querySelector(".person.approach"), sh = el?.previousElementSibling;
+  if (!el) return;
+  const b = personBox(p, { cx: 480, feet: 1330, h: 900 });
+  setTimeout(() => { el.classList.add("walking"); Object.assign(el.style, b.person); if (sh) { sh.classList.add("walking"); Object.assign(sh.style, b.shadow); } }, 700);
+}
+// 異変がないのに閉めた:ビビッと鳴って、階数表示が乱れる(音を消していても分かるように)。震えるスマホなら短く2回震える
+function miss() {
+  sBuzz(); if (navigator.vibrate) navigator.vibrate([70, 50, 70]);
+  const i = $("ind"); i.classList.remove("err"); void i.offsetWidth; i.classList.add("err");
+}
 function setScene(f, e) {
-  $("plate").src = P + PLATE[f];
+  $("plate").src = P + (e?.plate || PLATE[f]);
   let bg = "";
   for (const pr of e?.env?.props || []) bg += `<img class="L" src="${P}prop-${pr}.webp" alt="">`;
   if (e?.anomaly === "SHOES") bg += `<img class="L" src="${P}anom-shoes.webp" alt="">`;
   if (e?.anomaly === "FINGERS") bg += `<img class="L" src="${P}anom-fingers.webp" alt="">`;
+  if (e?.anomaly === "DOORS_AJAR") bg += `<img class="L" src="${P}anom-doors.webp" alt="">`;
   const L = e?.env?.lights;
   if (L === "fardark") bg += '<div class="fardark"></div>'; // 人物より後ろに置く
   $("bgAnom").innerHTML = bg;
   let c = "";
   if (e && e.wake) c += WAKE_LINE();
   if (e && e.p) {
-    c += personHTML(e.p, POS[e.at], L === "fardark" && e.at === "far" ? "infar" : "", e.at !== "far");
+    // 近づいてくる人は、影も一緒に動かすので最初から影を付ける(stop() で動かす)
+    c += personHTML(e.p, POS[e.at], (L === "fardark" && e.at === "far" ? "infar" : "") + (e.approach ? " approach" : ""), e.at !== "far" || e.approach);
     if (e.bow) c += personHTML("a_bow", POS[e.at], "alt", false); // 会釈の絵(扉が開いて少ししてから入れ替える)
     if (e.anomaly === "DELIV_LABEL") c += `<div class="label" style="left:47.5%;top:${pct(1300 - 860 * .93, 1672)}">${t().room}</div>`;
   }
@@ -630,18 +740,20 @@ function setScene(f, e) {
   $("fx").innerHTML = (L === "flicker" ? '<div class="flicker"></div>' : L === "shadowed" ? '<div class="fardark"></div>' : "")
     + (e?.anomaly === "LIGHTS_OUT" ? '<div class="out o1"></div><div class="out o2"></div><div class="out o3"></div>' : "");
 }
-async function travel(to) {
-  $("ind").classList.add("moving"); sTravel(true);
+// shown: 表示する階(「進まない階数表示」の異変では、前の階のまま)
+async function travel(to, shown = to) {
+  $("ind").classList.add("moving"); sTravel(true); heartbeat(to);
   await wait(1700);
-  floor = to; $("fl").textContent = to;
+  floor = to; $("fl").textContent = shown;
   await wait(500); sTravel(false); $("ind").classList.remove("moving");
 }
 async function start() {
   audioInit(); $("ovPoster").classList.add("hide"); $("ovResult").classList.add("hide");
+  heartbeat(0);
   floor = 1; riders = []; log = []; seen = []; streak = 0; lastDeath = null; encounters = []; runToken++; lit = new Set([7]); paintPanel(); $("fl").textContent = 1;
   stage.classList.remove("open"); setMirror([]); $("dim").style.transition = ""; $("dim").style.opacity = 0;
   for (const f of [2, 3, 4, 5, 6]) {
-    await travel(f);
+    await travel(f, NIGHT.ev[f].anomaly === "IND_STUCK" ? f - 1 : f);
     await ready; // 画像がまだ届いていなければ、昇っている間に待つ
     const ok = await stop(f);
     if (!ok) return;
@@ -666,6 +778,7 @@ async function stop(f) {
   if (e.anomaly === "ALL_BUTTONS") { [1, 2, 3, 4, 5, 6, 7].forEach(n => lit.add(n)); setTimeout(paintPanel, 700); }
   sAmb(e.env.sound); await openDoors();
   if (e.anomaly === "LIGHTS_OUT") $("fx").classList.add("going");
+  if (e.approach) approach(e.p);
   openedAt = performance.now();
   $("closeBtn").disabled = false;
   const timers = [];
@@ -681,7 +794,7 @@ async function stop(f) {
   const reactMs = performance.now() - openedAt;
   decide = extend = null; timers.forEach(clearTimeout); caption(null); $("corr").classList.remove("bowing"); $("closeBtn").disabled = true; $("openBtn").disabled = true; ambStop && ambStop();
   $("fl").textContent = f;
-  if (e.anomaly === "ALL_BUTTONS") { lit = litBefore; paintPanel(); }
+  if (e.anomaly === "ALL_BUTTONS" || e.anomaly === "PRESS_4") { lit = litBefore; paintPanel(); }
   const isAnom = !!e.anomaly, correct = closed === isAnom, i = log.length;
   encounters.push({ floor: f, key: phKey(e), anomaly: isAnom, correct, name: phName(e) });
   if (correct) {
@@ -693,7 +806,10 @@ async function stop(f) {
     return true;
   }
   if (closed && !isAnom) {
-    // 異変がないのに閉めた: ドボンにはしない。その階のスコアが入らないだけ(乗ろうとしていた住人は乗らない)
+    // 異変がないのに閉めた: ドボンにはしない。待っていれば入った点の半分を引く(乗ろうとしていた住人は乗らない)。
+    // その場では「ビビッ」と鳴って表示が乱れるだけ(何を間違えたかは言わない)
+    miss();
+    const k = phKey(e); if (k && PTS[k] && PTS[k][0] > 0) seen.push({ key: "MISS", name: t().miss, pts: -Math.round(scoreItem(PTS[k][0], f, streak, false, reactMs, e.env.lights, hesitMs) / 2), stars: 0 });
     setMirror(riders.map((r, k) => ({ p: r.p, pos: riderPos(k), o: .26 })));
     await closeDoors(); log.push([clock(i), f, x.closed]); return true;
   }
@@ -723,11 +839,11 @@ async function stop(f) {
 }
 // ============ ドボンの一撃:違和感に応じた顔が画面いっぱいに迫り、すぐ暗転する(約0.4秒) ============
 // 人そのものが違和感のもの。このときはその人の顔(通夜の列は先頭の葬儀社の男)
-const PERSON_ANOM = new Set(["OLDMAN", "OJISAN_NO_NOD", "MOURNER_OFF6", "CAPTION_707", "WRONG_FLOOR", "REBOARD", "MONK_7", "DELIV_LABEL", "OJISAN_BACK", "KID_NOBUTTON", "KID_BACK", "HOME_EARLY"]);
+const PERSON_ANOM = new Set(["OLDMAN", "OJISAN_NO_NOD", "MOURNER_OFF6", "CAPTION_707", "WRONG_FLOOR", "REBOARD", "MONK_7", "DELIV_LABEL", "OJISAN_BACK", "KID_NOBUTTON", "KID_BACK", "HOME_EARLY", "APPROACH", "BAREFOOT", "PRESS_4"]);
 // 人物ごとの顔。男の子の顔は出さず「男の子の後ろにいた女」にする(ガードレール「子どもを死者として扱わない」)。姿勢違いは元の人物の顔
-const SCARE_FACE = { kid: "kidwoman", kid_back: "kidwoman", a_bow: "a", a_back: "a" };
+const SCARE_FACE = { kid: "kidwoman", kid_back: "kidwoman", a_bow: "a", a_back: "a", woman_bare: "woman" };
 // 物や現象の違和感の顔(そこにいた人は無関係なので出さない)
-const ENV_FACE = { FINGERS: "eye", SHOES: "shoes", INDICATOR_13: "floor13", LIGHTS_OUT: "dark", PROP_FOLLOW: "shadow", ALL_BUTTONS: "profile" };
+const ENV_FACE = { FINGERS: "eye", SHOES: "shoes", INDICATOR_13: "floor13", LIGHTS_OUT: "dark", PROP_FOLLOW: "shadow", ALL_BUTTONS: "profile", DOORS_AJAR: "eye", PLATE_SWAP: "floor13", IND_STUCK: "floor13" };
 // 生成した縦長の顔(画面と同じ比率)の焦点 [x%, y%]。それ以外は人物写真から切り出した横長の顔
 const FULL_FACE = { eye: [49, 40], shoes: [61, 32], floor13: [50, 40], dark: [52, 32], shadow: [52, 25], profile: [51, 28], kidwoman: [56, 36] };
 // refl: 扉に映る人物(なければ映らない) / face: 迫ってくる顔
@@ -757,7 +873,7 @@ async function arriveHome() {
   sChime();
   $("openBtn").disabled = false; $("openBtn").classList.add("on");
   await new Promise(res => opener = res); opener = null; $("openBtn").classList.remove("on"); $("openBtn").disabled = true;
-  await openDoors();
+  await openDoors(); heartbeat(0); // 扉が開いたら、鼓動は止む
   if (called) setTimeout(() => caption("home"), 1500);
   await wait(called ? 4200 : 3000); caption(null);
   $("dim").style.opacity = 1; await wait(900);
@@ -765,7 +881,8 @@ async function arriveHome() {
 }
 function repHTML(home) {
   const x = t();
-  const items = seen.length ? seen.map(it => `<div class="it"><span><span class="st">${it.stars ? "★".repeat(it.stars) : ""}</span>${it.name}</span><span>${x.yen(it.pts)}</span></div>`).join("") : `<div class="it"><span>${x.none}</span></div>`;
+  const pts = n => n < 0 ? "−" + x.yen(-n) : x.yen(n);
+  const items = seen.length ? seen.map(it => `<div class="it${it.pts < 0 ? " miss" : ""}"><span><span class="st">${it.stars ? "★".repeat(it.stars) : ""}</span>${it.name}</span><span>${pts(it.pts)}</span></div>`).join("") : `<div class="it"><span>${x.none}</span></div>`;
   return `<div class="rep"><h4>${x.repTitle}</h4>${items}
     <div class="tot ${home ? "" : "lost"}"><span>${x.total}</span><span>${x.yen(bank())}</span></div>
     ${home ? "" : `<div class="void">${x.void}</div>`}</div>`;
@@ -797,6 +914,7 @@ function shareLinks(text) {
     <button class="btn" id="img">${x.image}</button><button class="btn" id="cp">${x.copy}</button>`;
 }
 function result(home) {
+  heartbeat(0);
   const x = t(), text = shareText(home);
   // シェア用のページは結果の種類ごとの静的ファイル(scripts/build-cards.mjs)。開いた人は新しい夜を遊ぶ
   shareUrl = `${location.origin}/s/${lang}-${home ? 7 : floor}`;

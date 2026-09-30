@@ -1,0 +1,10 @@
+Use case: game-asset
+Asset type: "anomaly" variant of an existing cut-out character sprite for a spot-the-difference horror game. Everything except the one change must stay identical.
+
+Change exactly ONE thing: the woman is now BAREFOOT. Remove her flat shoes; show her bare feet standing flat, pale, with slightly dirty soles and toes, toenails plain. Same foot position, same stance, same size.
+
+Keep everything else exactly the same: the same woman, same face and expression, same hair, same gray cardigan, same dark dress, same bare legs, same white plastic bag in the same hand, same pose, same lighting, same framing, same resolution and aspect ratio. The background stays a perfectly flat, uniform, solid pure green chroma-key background (#00FF00), no floor, no shadow.
+
+Constraints: no text, no logos, no watermarks, no socks, no slippers, no shoes, not gory, no wounds, no blood.
+
+Output handling: save the generated image exactly as produced by image_gen. Do NOT remove the green background, do NOT run any chroma-key, masking or cleanup script, do NOT edit the pixels in any way.

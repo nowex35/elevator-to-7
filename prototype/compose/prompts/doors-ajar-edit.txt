@@ -1,0 +1,8 @@
+Use case: game-asset
+Asset type: "anomaly" variant of an existing background scene for a spot-the-difference horror game. Everything except the one change must stay identical.
+
+Change exactly ONE thing: every apartment front door along the right-hand wall of the corridor is now standing slightly open, each one ajar by a narrow gap (about a hand's width), swung outward into the corridor, with pitch-black darkness inside each gap, as if someone behind every door is quietly watching. Include the large door nearest to the viewer and the doors further down the corridor on the right. The doors keep their color, size, handles and hinges; only their opening angle changes, with correct perspective and a thin shadow along each gap.
+
+Keep everything else exactly the same: camera, perspective, elevator door frame, corridor floor, left handrail wall, the night city view, the potted plant, the black umbrella, the meter boxes, the ceiling lights, the far end of the corridor, colors, lighting, style, resolution and aspect ratio. Do not add or remove any other object. Do not change anything at the far end of the corridor.
+
+Constraints: no text, no numbers, no logos, no watermarks, no people, no faces, no hands, no eyes, no figures.

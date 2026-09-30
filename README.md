@@ -79,6 +79,7 @@ SITE_URL=https://<公開先のドメイン> npm run build:cards
 - `public/parts/` は WebP(合計約 1.1MB)。元の PNG/JPG は `assets-src/parts/`。人物は全員を同じ倍率(60%)で縮めている。
 - 人物画像を差し替えたら、`index.html` の `DIM`(幅と高さの表)を測り直す。
 - ゲームは最初に扉と廊下だけを読み込み、その夜に出る画像は貼り紙を読んでいる間に裏で読み込む。
+- 異変の差分:廊下に重ねる `anom-<fingers|shoes|doors>.webp`(背景と同じ大きさで、透過付き)、裸足の女 `p-woman-barefoot.webp`(元の女の絵から靴だけを変えた別カット)。
 - ドボンで迫る顔:人物の顔は `public/parts/face-<人物>.webp`(元の写真から切り出し)、物や現象の違和感の顔は `face-<eye|shoes|floor13|dark|shadow|profile|kidwoman>.webp`(生成画像。元は `assets-src/faces/`)。
 
 ## アイコン
