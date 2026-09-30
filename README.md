@@ -79,6 +79,11 @@ SITE_URL=https://<公開先のドメイン> npm run build:cards
 - `public/parts/` は WebP(合計約 1.1MB)。元の PNG/JPG は `assets-src/parts/`。人物は全員を同じ倍率(60%)で縮めている。
 - 人物画像を差し替えたら、`index.html` の `DIM`(幅と高さの表)を測り直す。
 - ゲームは最初に扉と廊下だけを読み込み、その夜に出る画像は貼り紙を読んでいる間に裏で読み込む。
+- ドボンで迫る顔:人物の顔は `public/parts/face-<人物>.webp`(元の写真から切り出し)、物や現象の違和感の顔は `face-<eye|shoes|floor13|dark|shadow|profile|kidwoman>.webp`(生成画像。元は `assets-src/faces/`)。
+
+## アイコン
+
+橙色に光る「7」のボタン。`cd app && npm run build:icons` で `public/` に `favicon.ico`(16・32・48)・`favicon.svg`・`apple-touch-icon.png`・`icon-192/512.png`・`icon-maskable-512.png`・`site.webmanifest` を作る。
 
 ## 無料枠の上限(Cloudflare の公式ドキュメントより)
 

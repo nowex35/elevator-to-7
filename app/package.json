@@ -6,7 +6,8 @@
     "dev": "wrangler dev",
     "db:migrate:local": "wrangler d1 migrations apply night-elevator --local",
     "build:cards": "node scripts/build-cards.mjs",
-    "types": "wrangler types"
+    "types": "wrangler types",
+    "build:icons": "node scripts/build-icons.mjs"
   },
   "devDependencies": {
     "@resvg/resvg-wasm": "^2.6.2",
