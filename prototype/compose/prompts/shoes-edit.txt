@@ -1,0 +1,8 @@
+Use case: game-asset
+Asset type: "anomaly" variant of an existing background scene for a spot-the-difference horror game. Everything except the one change must stay identical.
+
+Change exactly ONE thing: add a pair of women's red high-heeled shoes, placed neatly side by side in the middle of the corridor floor, about one third of the way down the corridor, with the toes pointing toward the viewer (toward the elevator), as if someone invisible is standing there. Correct size for that distance, correct floor shadow and reflection.
+
+Keep everything else exactly the same: camera, perspective, elevator door frame, corridor, lighting, colors, all doors, plant, umbrella, handrail wall, ceiling lights, style, resolution and aspect ratio. Do not add or remove any other object.
+
+Constraints: no text, no numbers, no logos, no watermarks, no people, no feet, no legs.

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>異界エレベーター 絵柄比較</title>
+<style>
+  :root {
+    --bg: #0e0f10; --fg: #e6e6e3; --muted: #9a9c97; --card: #17191a; --line: #2a2d2f;
+    --accent: #c9f0c0; --warn: #f0c9a0;
+  }
+  :root[data-theme="light"] { --bg: #f4f4f1; --fg: #1c1d1e; --muted: #5e605c; --card: #fff; --line: #d9dad5; --accent: #2d6a25; --warn: #8a4a10; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.6 system-ui, -apple-system, "Hiragino Sans", sans-serif; }
+  header { padding: 20px 16px 8px; max-width: 1240px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  header p { margin: 4px 0; color: var(--muted); font-size: 13px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  button.t { background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 13px; cursor: pointer; }
+  button.t[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+  main { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 20px; padding: 16px; max-width: 1240px; margin: 0 auto; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+  .card h2 { font-size: 15px; margin: 0 0 2px; }
+  .card .sub { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--warn); color: var(--warn); margin-left: 6px; vertical-align: 2px; }
+
+  /* ---- ゲーム画面(9:16) ---- */
+  .phone { position: relative; aspect-ratio: 9 / 16; width: 100%; border-radius: 10px; overflow: hidden; background: #000; user-select: none; }
+  .phone img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity .25s; }
+  .phone img.pixel { image-rendering: pixelated; }
+  .phone img.anom { opacity: 0; }
+  .phone.show-anom img.anom { opacity: 1; }
+  .phone.blink img.anom { animation: blink 1.2s steps(1) infinite; }
+  @keyframes blink { 0%{opacity:0} 50%{opacity:1} }
+  /* 扉: 開閉アニメで「扉が開く瞬間」を見せる */
+  .door { position: absolute; top: 12%; bottom: 20%; width: 50%; background: linear-gradient(90deg, #5d6368, #7c8388 45%, #555b60); transition: transform .9s cubic-bezier(.6,.05,.3,1); z-index: 2; }
+  .door.l { left: 0; box-shadow: inset -2px 0 0 #2b2f33; }
+  .door.r { right: 0; box-shadow: inset 2px 0 0 #2b2f33; }
+  .phone.open .door.l { transform: translateX(-100%); }
+  .phone.open .door.r { transform: translateX(100%); }
+  /* HUD(画像ではなく DOM。日英切替のため) */
+  .hud-top { position: absolute; top: 0; left: 0; right: 0; height: 12%; display: flex; align-items: center; justify-content: center; z-index: 3; }
+  .ind { font: 700 22px/1 ui-monospace, "SF Mono", Menlo, monospace; color: #ff6a3d; background: #120806; padding: 6px 14px 6px 10px; border-radius: 4px; letter-spacing: 2px; text-shadow: 0 0 8px rgba(255,90,40,.7); display: flex; gap: 8px; align-items: center; }
+  .ind .arr { font-size: 14px; }
+  .hud-bot { position: absolute; left: 0; right: 0; bottom: 0; height: 20%; display: flex; align-items: center; justify-content: center; gap: 18px; z-index: 3; }
+  .btn { width: 30%; aspect-ratio: 1.6; border-radius: 10px; border: 2px solid #8b9196; background: radial-gradient(#3a3f43, #25292c); color: #e8ece8; font: 700 15px/1.2 system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; }
+  .btn small { font-size: 10px; font-weight: 500; opacity: .75; }
+  .btn:active { transform: scale(.96); }
+  .notice { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 4; background: rgba(0,0,0,.7); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
+  .notice.on { opacity: 1; }
+
+  .row { display: flex; gap: 6px; margin: 10px 0 8px; flex-wrap: wrap; }
+  .row button { flex: 1; min-width: 70px; }
+  dl { margin: 8px 0 0; font-size: 12.5px; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; }
+  dt { color: var(--muted); white-space: nowrap; }
+  dd { margin: 0; }
+  section.notes { max-width: 1240px; margin: 0 auto; padding: 0 16px 40px; font-size: 13.5px; }
+  section.notes h2 { font-size: 16px; }
+  section.notes li { margin: 4px 0; }
+  @media (max-width: 420px) { main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>異界エレベーター:絵柄モック比較</h1>
+  <p>4案とも同じ構図(エレベーターの中から開いた扉越しに夜の団地の外廊下を見る)で、同じ異変を1つ入れています。</p>
+  <p>異変:<b>手前から3番目のドアがわずかに開き、隙間から白い指が縁をつかんでいる</b>。階数表示とボタンは画像ではなく HTML で重ねています(日英を切り替えるため)。</p>
+  <div class="controls">
+    <button class="t" data-mode="base" aria-pressed="true">普通の階</button>
+    <button class="t" data-mode="anom" aria-pressed="false">異変の階</button>
+    <button class="t" data-mode="blink" aria-pressed="false">交互に点滅(差分チェック)</button>
+    <button class="t" id="lang" aria-pressed="false">English</button>
+    <button class="t" id="doorAll">扉を開け閉めする</button>
+  </div>
+</header>
+
+<main id="grid"></main>
+
+<section class="notes">
+  <h2>見るポイント</h2>
+  <ul>
+    <li><b>「交互に点滅」で、異変以外のところが動いていないか</b>。AIで編集すると、ドアの位置や光の具合が少しずれることがあります。ずれると「どこが異変か」の正解がぶれて、ゲームとして成り立ちません。</li>
+    <li>「扉を開け閉めする」で、扉が開く瞬間の怖さ。実況の切り抜きになるのはこの瞬間です。</li>
+    <li>スマホの縦画面で見たときに、異変が「気づけば分かる/気づかなければ見逃す」くらいの大きさになっているか。</li>
+  </ul>
+</section>
+
+<script>
+const STYLES = [
+  { id: "pixel", name: "ドット絵", en: "Pixel art", base: "pixel-base.png", anom: "pixel-anomaly.png", pixel: true,
+    sub: "16bit 風。青鬼・ゆめにっきの系譜", stats: "STAT_PIXEL" },
+  { id: "photo", name: "写真風", en: "Photographic", base: "photo-base.jpg", anom: "photo-anomaly.jpg",
+    sub: "夜にスマホで撮ったような写真。モキュメンタリー寄り", stats: "STAT_PHOTO" },
+  { id: "hand", name: "手描き風(→アニメ背景風)", en: "Hand-drawn", base: "hand-base.jpg", anom: "hand-anomaly.jpg",
+    sub: "鉛筆+水彩を指定したが、実際はアニメ背景画に近く仕上がった", stats: "STAT_HAND" },
+  { id: "vector", name: "コード描画(SVG)", en: "Code-drawn", base: "vector-base.svg", anom: "vector-anomaly.svg", added: true,
+    sub: "AIを使わずコードで描く。異変は表示/非表示の切替だけ", stats: "STAT_VECTOR" },
+];
+const STATS = {
+  STAT_PIXEL: [["生成", "約53秒"], ["異変の編集", "約61秒・1回で成功"], ["変わった画素", "0.26%(ほぼドア周辺だけ)"], ["指示どおりか", "✗ 3番目ではなく2番目のドアが開いた"]],
+  STAT_PHOTO: [["生成", "約59秒"], ["異変の編集", "約58秒・1回で成功"], ["変わった画素", "0.68%(ドア+床の反射が少し)"], ["指示どおりか", "✗ 3番目ではなく一番手前のドアが開いた"]],
+  STAT_HAND: [["生成", "約71秒"], ["異変の編集", "約73秒・1回で成功"], ["変わった画素", "0.13%(ほぼドア周辺だけ)"], ["指示どおりか", "✗ 3番目ではなく2番目のドアが開いた"]],
+  STAT_VECTOR: [["生成", "0秒(コード)"], ["異変の編集", "0秒(表示の切替)"], ["変わった画素", "異変の部分だけ(構造上)"], ["指示どおりか", "○ 位置も大きさも数値で指定"]],
+};
+const T = {
+  ja: { open: "開", close: "閉", openS: "OPEN", closeS: "CLOSE", closed: "扉を閉めた", off: "降りた" },
+  en: { open: "OPEN", close: "CLOSE", openS: "開", closeS: "閉", closed: "Doors closed", off: "You stepped out" },
+};
+let lang = "ja";
+const grid = document.getElementById("grid");
+STYLES.forEach((s, i) => {
+  const el = document.createElement("article");
+  el.className = "card";
+  el.innerHTML = `
+    <h2>${s.name}${s.added ? '<span class="tag">Claude の追加案</span>' : ""}</h2>
+    <p class="sub">${s.sub}</p>
+    <div class="phone open" id="ph-${s.id}">
+      <img class="base ${s.pixel ? "pixel" : ""}" src="${s.base}" alt="${s.name} 普通の階">
+      <img class="anom ${s.pixel ? "pixel" : ""}" src="${s.anom}" alt="${s.name} 異変の階">
+      <div class="door l"></div><div class="door r"></div>
+      <div class="hud-top"><div class="ind"><span class="arr">▼</span><span class="fl">${7 - i}F</span></div></div>
+      <div class="hud-bot">
+        <div class="btn" data-act="open"><span class="bl"></span><small class="bs"></small></div>
+        <div class="btn" data-act="close"><span class="bl"></span><small class="bs"></small></div>
+      </div>
+      <div class="notice"></div>
+    </div>
+    <dl>${STATS[s.stats].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`;
+  grid.appendChild(el);
+  const ph = el.querySelector(".phone");
+  ph.querySelectorAll(".btn").forEach(b => b.addEventListener("click", () => {
+    const n = ph.querySelector(".notice");
+    if (b.dataset.act === "close") { ph.classList.remove("open"); n.textContent = T[lang].closed; }
+    else { ph.classList.add("open"); n.textContent = T[lang].off; }
+    n.classList.add("on"); setTimeout(() => n.classList.remove("on"), 900);
+  }));
+});
+function paintLang() {
+  document.querySelectorAll(".btn").forEach(b => {
+    const k = b.dataset.act;
+    b.querySelector(".bl").textContent = T[lang][k];
+    b.querySelector(".bs").textContent = T[lang][k + "S"];
+  });
+  document.getElementById("lang").textContent = lang === "ja" ? "English" : "日本語";
+}
+paintLang();
+document.getElementById("lang").onclick = () => { lang = lang === "ja" ? "en" : "ja"; paintLang(); };
+document.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => {
+  document.querySelectorAll("[data-mode]").forEach(x => x.setAttribute("aria-pressed", x === b));
+  document.querySelectorAll(".phone").forEach(p => {
+    p.classList.toggle("show-anom", b.dataset.mode === "anom");
+    p.classList.toggle("blink", b.dataset.mode === "blink");
+  });
+});
+document.getElementById("doorAll").onclick = () => {
+  const phones = document.querySelectorAll(".phone");
+  phones.forEach(p => p.classList.remove("open"));
+  setTimeout(() => phones.forEach(p => p.classList.add("open")), 1400);
+};
+</script>
+</body>
+</html>

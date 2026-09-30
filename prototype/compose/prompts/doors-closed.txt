@@ -1,0 +1,11 @@
+Use case: game-asset
+Asset type: background scene for a vertical 2D mobile horror game, photographic style.
+
+Subject: the view from inside an old elevator car in a Japanese apartment building at night, looking straight at the CLOSED sliding elevator doors. Two brushed stainless-steel door panels meeting in a vertical seam in the center. The brushed steel is slightly worn and scratched and acts as a dim, blurry mirror: it faintly reflects the interior ceiling light of the car, but there are NO people or figures reflected in it. Around the doors: the steel door frame and the car's side walls.
+
+Framing: centered, symmetrical, straight on. The doors occupy the same area as an open doorway would: roughly from 14% to 80% of the image height, and from 10% to 90% of the width. Keep the top 12% of the image as the dark elevator ceiling panel and the bottom 20% as the metal floor of the car, because game UI will be overlaid there.
+Mood / lighting: a single cold fluorescent ceiling light inside the car, dim, lonely, late night. Realistic, slightly grainy like a night smartphone photo.
+Style: photorealistic.
+Aspect: portrait, tall vertical phone screen (9:16).
+
+Constraints: no text, no numbers, no signs, no floor indicator digits, no buttons with labels, no logos, no watermarks, no people, no faces, no silhouettes, no reflected figures.

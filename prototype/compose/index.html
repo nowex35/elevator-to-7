@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>パーツ合成モック</title>
+<style>
+  :root { --bg:#0e0f10; --fg:#e6e6e3; --muted:#9a9c97; --card:#17191a; --line:#2a2d2f; --on:#e6e6e3; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.6 system-ui,-apple-system,"Hiragino Sans",sans-serif; }
+  .wrap { max-width:1180px; margin:0 auto; padding:16px; }
+  h1 { font-size:19px; margin:0 0 4px; }
+  h2 { font-size:15px; margin:28px 0 8px; }
+  p.m { color:var(--muted); margin:2px 0; font-size:13px; }
+  .top { display:grid; grid-template-columns:minmax(260px,380px) 1fr; gap:20px; margin-top:12px; align-items:start; }
+  @media (max-width:720px){ .top { grid-template-columns:1fr; } }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
+  .grp { margin:0 0 12px; }
+  .grp b { display:block; font-size:12px; color:var(--muted); font-weight:600; margin-bottom:4px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chips button { background:transparent; color:var(--fg); border:1px solid var(--line); border-radius:999px; padding:4px 12px; font:inherit; font-size:13px; cursor:pointer; }
+  .chips button[aria-pressed="true"] { background:var(--on); color:var(--bg); border-color:var(--on); }
+  .chips button:disabled { opacity:.35; cursor:not-allowed; }
+  code.id { font:600 13px ui-monospace,Menlo,monospace; background:#000; color:#ff7a4a; padding:2px 8px; border-radius:4px; }
+
+  /* ---- 941x1672 の座標系でレイヤーを重ねるステージ ---- */
+  .stage { position:relative; aspect-ratio:941/1672; width:100%; overflow:hidden; border-radius:10px; background:#000; container-type:inline-size; }
+  .stage > * { position:absolute; }
+  .L { inset:0; width:100%; height:100%; object-fit:cover; }
+  .hide { display:none !important; }
+  /* 人物: 左端・上端・高さを % で指定(座標はステージ基準) */
+  .person { transform-origin:50% 100%; }
+  .person img { display:block; height:100%; width:auto; filter:brightness(.58) contrast(1.06) saturate(.7); }
+  .person.flip img { transform:scaleX(-1); }
+  /* 天井の蛍光灯っぽく、頭を明るく足元を暗く */
+  .person .shade { position:absolute; inset:0; background:linear-gradient(#f2fbf4 0%, transparent 30%, rgba(0,0,0,.6) 100%); mix-blend-mode:soft-light;
+    -webkit-mask-size:100% 100%; mask-size:100% 100%; }
+  .person.flip .shade { transform:scaleX(-1); }
+  .corr { inset:0; clip-path:inset(13.3% 10.6% 19.5% 9.8%); }
+  .corr > * { position:absolute; }
+  .shadow { border-radius:50%; background:radial-gradient(closest-side, rgba(0,0,0,.75), rgba(0,0,0,.35) 60%, transparent); filter:blur(3px); }
+  /* 扉 */
+  /* 扉は開口部でクリップ(開くと枠の奥=戸袋に隠れる) */
+  .doors { left:9.8%; top:13.3%; width:79.6%; height:67.2%; overflow:hidden; }
+  .door { position:absolute; top:0; height:100%; width:50%; overflow:hidden; transition:transform .9s cubic-bezier(.6,.05,.3,1); }
+  .door img { width:100%; height:100%; object-fit:cover; display:block; }
+  .door.l { left:0; } .door.r { left:50%; }
+  .stage.open .door.l { transform:translateX(-101%); } .stage.open .door.r { transform:translateX(101%); }
+  .stage.open .door.l, .stage.open .door.r { visibility:hidden; transition:transform .9s cubic-bezier(.6,.05,.3,1), visibility 0s .9s; }
+  .stage:not(.open) .door { visibility:visible; }
+  /* 扉への映り込み(後ろにいる人) */
+  .rfix { position:absolute; inset:0; transition:transform .9s cubic-bezier(.6,.05,.3,1); }
+  .rfix.light { mix-blend-mode:hard-light; } .rfix.mirror { mix-blend-mode:screen; }
+  .stage.open .door.l .rfix { transform:translateX(101%); } .stage.open .door.r .rfix { transform:translateX(-101%); }
+  .refl { position:absolute; pointer-events:none; opacity:.34; filter:blur(2.2px) grayscale(.4) brightness(1.2); transform:scaleX(-1); transform-origin:50% 100%; }
+  .refl img { height:100%; width:auto; display:block; }
+  .grain { inset:0; pointer-events:none; opacity:.09; mix-blend-mode:overlay; image-rendering:pixelated; }
+  .vig { inset:0; pointer-events:none; background:radial-gradient(ellipse at 50% 42%, transparent 52%, rgba(0,0,0,.6) 100%); }
+  /* HUD */
+  .hud { left:0; right:0; top:0; height:12%; display:flex; align-items:center; justify-content:center; }
+  .ind { font:700 6cqw/1 ui-monospace,Menlo,monospace; color:#ff6a3d; background:#120806; padding:1.2cqw 3cqw; border-radius:1cqw; letter-spacing:.5cqw; text-shadow:0 0 2cqw rgba(255,90,40,.7); }
+  .btns { left:0; right:0; bottom:3%; height:13%; display:flex; justify-content:center; gap:6%; }
+  .btns div { width:30%; border-radius:2.5cqw; border:.5cqw solid #8b9196; background:radial-gradient(#3a3f43,#25292c); color:#eee; font:700 4.6cqw/1.2 system-ui; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; }
+  .btns small { font-size:2.8cqw; opacity:.7; font-weight:500; }
+
+  .gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; }
+  .gallery figure { margin:0; }
+  .gallery figcaption { font:11px ui-monospace,Menlo,monospace; color:var(--muted); margin-top:3px; word-break:break-all; }
+  .note li { margin:3px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>パーツ合成モック(写真風)</h1>
+  <p class="m">背景・異変・人物・影・扉・映り込み・粒子を、それぞれ別の画像/コードとして重ねています。組み合わせは下の ID で一意に決まります。</p>
+
+  <div class="top">
+    <div id="main"></div>
+    <div class="panel" id="ctrl">
+      <div class="grp"><b>フロア(背景プレート)</b><div class="chips" data-k="floor"></div></div>
+      <div class="grp"><b>背景の異変パーツ(差分から切り出し)</b><div class="chips" data-k="anom"></div></div>
+      <div class="grp"><b>扉の前に立つ人</b><div class="chips" data-k="person"></div></div>
+      <div class="grp"><b>合成だけで作る異変(生成0回)</b><div class="chips" data-k="mod"></div></div>
+      <div class="grp"><b>扉</b><div class="chips" data-k="door"></div></div>
+      <div class="grp"><b>扉を閉めたとき、後ろに映る人(乗せてしまった人)</b><div class="chips" data-k="behind"></div><div class="chips" data-k="dist" style="margin-top:6px"></div></div>
+      <div class="grp"><b>言語</b><div class="chips" data-k="lang"></div></div>
+      <div class="grp"><b>組み合わせ ID</b><code class="id" id="cid"></code> <span class="chips" style="display:inline-flex"><button id="rand">ランダム</button></span></div>
+    </div>
+  </div>
+
+  <h2>掛け算:ランダムな組み合わせ 12 通り</h2>
+  <p class="m">同じパーツ(背景 2 枚・異変 2 つ・住人 12 人・合成異変 4 種)から作った見た目の違い。<button id="reroll" style="font:inherit;font-size:12px">引き直す</button></p>
+  <div class="gallery" id="gal"></div>
+
+  <h2>確認したいこと</h2>
+  <ul class="note">
+    <li>人物が背景から「浮いて」見えないか(光の向き・色・足元の接地感)。</li>
+    <li>「影なし」「左右反転」「再登場」が、気づけば気づける異変になっているか。</li>
+    <li>扉を閉めたときの映り込みで、後ろの人が近づいてくる怖さが出るか(遠→中→近)。</li>
+  </ul>
+</div>
+
+<script>
+const PLATES = { corridor: "parts/corridor.jpg", parking: "parts/parking.jpg" };
+const ANOMS = { fingers: { src: "parts/anom-fingers.png", floors: ["corridor"], ja: "ドアの隙間の指" },
+                shoes:   { src: "parts/anom-shoes.png",   floors: ["corridor"], ja: "廊下の赤い靴" } };
+// 住人: [キー, 表示名, 画像, 背の高さ(大人=1)]。縦横比は読み込み後に入る
+const PEOPLE_LIST = [
+  ["a", "いつもの人", "parts/person-a.png", 1],
+  ["woman", "女", "parts/p-woman.png", .95],
+  ["kid", "男の子", "parts/p-kid.png", .7],
+  ["granny", "おばあさん", "parts/p-granny.png", .78],
+  ["salary", "サラリーマン", "parts/p-salary.png", 1.02],
+  ["deliv", "配達員", "parts/p-deliv.png", 1],
+  ["hood", "フードの男", "parts/p-hood.png", 1],
+  ["pajama", "パジャマの女", "parts/p-pajama.png", .94],
+  ["monk", "お坊さん", "parts/p-monk.png", .97],
+  ["mourner", "喪服の女", "parts/p-mourner.png", .93],
+  ["funeral", "葬儀社の男", "parts/p-funeral.png", 1],
+  ["oldman", "寝間着の老人", "parts/p-oldman.png", .92],
+];
+const PEOPLE = Object.fromEntries(PEOPLE_LIST.map(([k, ja, src, s]) => [k, { ja, src, s, ar: 0 }]));
+// 扉の前の立ち位置(ステージ座標 941x1672 基準)
+const SPOT = { cx: 500, feet: 1300, h: 860 };
+const DIST = { far: { h: 520, cx: 560, feet: 1180, o: .22 }, mid: { h: 760, cx: 520, feet: 1290, o: .32 }, near: { h: 1120, cx: 470, feet: 1450, o: .45 } };
+const S = { floor: "corridor", anom: [], person: "a", mod: [], door: "open", behind: "none", dist: "mid", lang: "ja" };
+const TXT = { ja: { o: "開", c: "閉", os: "OPEN", cs: "CLOSE" }, en: { o: "OPEN", c: "CLOSE", os: "開", cs: "閉" } };
+
+// 画像が読めた住人だけ使えるようにする(未生成の住人はボタンが無効になる)
+let pending = PEOPLE_LIST.length;
+for (const [k] of PEOPLE_LIST) { const im = new Image();
+  im.onload = () => { PEOPLE[k].ar = im.naturalWidth / im.naturalHeight; done(); }; im.onerror = done; im.src = PEOPLE[k].src; }
+function done() { if (--pending === 0) { renderAll(); renderGallery(); } }
+
+const pct = (v, total) => (v / total * 100) + "%";
+function personLayer(p, spot, cls = "person") {
+  const P = PEOPLE[p]; if (!P || !P.ar) return "";
+  const h = spot.h * P.s, w = h * P.ar, left = spot.cx - w / 2, top = spot.feet - h;
+  return `<div class="${cls}" style="left:${pct(left,941)};top:${pct(top,1672)};height:${pct(h,1672)};width:${pct(w,941)}">
+    <img src="${P.src}" alt="">${cls.includes("person") ? `<div class="shade" style="-webkit-mask-image:url(${P.src});mask-image:url(${P.src})"></div>` : ""}</div>`;
+}
+function stageHTML(st, big) {
+  const spot = st.mod.includes("small") ? { cx: 470, feet: 1300, h: 700 } : SPOT;
+  const P = PEOPLE[st.person];
+  let h = `<img class="L" src="${PLATES[st.floor]}" alt="">`;
+  for (const a of st.anom) if (ANOMS[a].floors.includes(st.floor)) h += `<img class="L" src="${ANOMS[a].src}" alt="">`;
+  // 廊下にいるもの(人・影)は開口部の向こう側なので、エレベーターの枠で隠れるよう開口部で切り取る
+  let corr = "";
+  if (st.person !== "none" && P && P.ar) {
+    const w = spot.h * P.s * P.ar;
+    // 2人目は先に描く(奥にいるので手前の人に隠れる)。廊下の奥=小さく・足元が上
+    if (st.mod.includes("twin")) corr += personLayer(st.person, { cx: spot.cx + 150, feet: spot.feet - 170, h: spot.h * .72 }, "person");
+    if (!st.mod.includes("noshadow"))
+      corr += `<div class="shadow" style="left:${pct(spot.cx - w*.75,941)};top:${pct(spot.feet - 26,1672)};width:${pct(w*1.5,941)};height:${pct(60,1672)}"></div>`;
+    corr += personLayer(st.person, spot, "person" + (st.mod.includes("flip") ? " flip" : ""));
+  }
+  h += `<div class="corr">${corr}</div>`;
+  // 扉と映り込み
+  let refl = "";
+  if (st.behind !== "none" && PEOPLE[st.behind]?.ar) {
+    const d = DIST[st.dist], B = PEOPLE[st.behind], bh = d.h * B.s, w = bh * B.ar;
+    refl = `<div class="refl" style="left:${pct(d.cx - w/2 - 92,748)};top:${pct(d.feet - bh - 222,1124)};height:${pct(bh,1124)};width:${pct(w,748)};opacity:${d.o}"><img src="${PEOPLE[st.behind].src}" alt=""></div>`;
+  }
+  // 扉に映るもの(天井の光・後ろの人)は、扉の中だけに見えるよう左右の扉それぞれに同じものを入れて扉でクリップ。
+  // 平面鏡を面内でスライドさせても虚像は動かないので、.rfix で扉の移動を打ち消して画面上に固定する。
+  // 光: 扉の写真から分離した「光の地図」を hard-light で、金属の地(扉と一緒に動く)に重ねる。
+  const doorInner = (side) => {
+    const off = side === "l" ? 0 : -100; // 右扉はステージ左からの位置がずれるので補正
+    const box = (inner) => `<div style="position:absolute;inset:0;width:200%;left:${off}%">${inner}</div>`;
+    return `<div class="rfix light">${box('<img src="parts/door-light.png" alt="" style="position:absolute;inset:0;width:100%;height:100%">')}</div>`
+      + (refl ? `<div class="rfix mirror">${box(refl)}</div>` : "");
+  };
+  h += `<div class="doors"><div class="door l"><img src="parts/door-l.jpg" alt="">${doorInner("l")}</div><div class="door r"><img src="parts/door-r.jpg" alt="">${doorInner("r")}</div></div>`;
+  h += `<canvas class="grain L"></canvas><div class="vig"></div>`;
+  if (big) {
+    const t = TXT[st.lang];
+    h += `<div class="hud"><div class="ind">▼ ${st.floor === "parking" ? "B1" : "5F"}</div></div>
+      <div class="btns"><div data-act="open">${t.o}<small>${t.os}</small></div><div data-act="close">${t.c}<small>${t.cs}</small></div></div>`;
+  }
+  return h;
+}
+function comboId(st) {
+  const f = { corridor: "F1", parking: "F2" }[st.floor];
+  const a = st.anom.filter(x => ANOMS[x].floors.includes(st.floor)).map(x => ({ fingers: "A1", shoes: "A2" })[x]).join("") || "A0";
+  const p = "P" + (PEOPLE_LIST.findIndex(([k]) => k === st.person) + 1);
+  const m = st.mod.map(x => ({ noshadow: "M1", flip: "M2", twin: "M3", small: "M4" })[x]).join("") || "M0";
+  return [f, a, p, m].join("-");
+}
+function grain(cv) {
+  const w = cv.width = 470, h = cv.height = 836, ctx = cv.getContext("2d"), im = ctx.createImageData(w, h);
+  for (let i = 0; i < im.data.length; i += 4) { const v = Math.random() * 255; im.data[i] = im.data[i+1] = im.data[i+2] = v; im.data[i+3] = 255; }
+  ctx.putImageData(im, 0, 0);
+}
+const main = document.getElementById("main");
+function renderMain() {
+  main.innerHTML = `<div class="stage ${S.door === "open" ? "open" : ""}" id="st">${stageHTML(S, true)}</div>`;
+  main.querySelectorAll("canvas.grain").forEach(grain);
+  main.querySelectorAll(".btns [data-act]").forEach(b => b.onclick = () => { S.door = b.dataset.act === "open" ? "open" : "closed"; document.getElementById("st").classList.toggle("open", S.door === "open"); paintCtrl(); });
+  document.getElementById("cid").textContent = comboId(S);
+}
+const OPTS = {
+  floor: [["corridor", "住居の外廊下"], ["parking", "地下駐車場"]],
+  anom: [["fingers", "ドアの指"], ["shoes", "赤い靴"]],
+  person: [["none", "なし"], ...PEOPLE_LIST.map(([k, ja]) => [k, ja])],
+  mod: [["noshadow", "影がない"], ["flip", "左右反転"], ["twin", "同じ人が2人"], ["small", "少し小さい"]],
+  door: [["open", "開"], ["closed", "閉"]],
+  behind: [["none", "誰もいない"], ...PEOPLE_LIST.map(([k, ja]) => [k, ja])],
+  dist: [["far", "遠"], ["mid", "中"], ["near", "近"]],
+  lang: [["ja", "日本語"], ["en", "English"]],
+};
+const MULTI = new Set(["anom", "mod"]);
+function paintCtrl() {
+  document.querySelectorAll("[data-k]").forEach(box => {
+    const k = box.dataset.k;
+    box.innerHTML = OPTS[k].map(([v, l]) => {
+      const on = MULTI.has(k) ? S[k].includes(v) : S[k] === v;
+      const dis = (k === "anom" && !ANOMS[v].floors.includes(S.floor)) || ((k === "person" || k === "behind") && v !== "none" && !PEOPLE[v].ar);
+      return `<button data-v="${v}" aria-pressed="${on}" ${dis ? "disabled" : ""}>${l}</button>`;
+    }).join("");
+    box.querySelectorAll("button").forEach(b => b.onclick = () => {
+      const v = b.dataset.v;
+      if (MULTI.has(k)) S[k] = S[k].includes(v) ? S[k].filter(x => x !== v) : [...S[k], v]; else S[k] = v;
+      if (k === "behind" && v !== "none") S.door = "closed";
+      renderAll();
+    });
+  });
+}
+const pick = a => a[Math.floor(Math.random() * a.length)];
+function randomState() {
+  const floor = pick(["corridor", "corridor", "parking"]);
+  const anom = ["fingers", "shoes"].filter(() => Math.random() < .3);
+  const ready = PEOPLE_LIST.map(([k]) => k).filter(k => PEOPLE[k].ar);
+  const person = Math.random() < .2 ? "none" : pick(ready);
+  const mod = person === "none" ? [] : ["noshadow", "flip", "twin", "small"].filter(() => Math.random() < .22);
+  return { floor, anom, person, mod, door: "open", behind: "none", dist: "mid", lang: S.lang };
+}
+function renderGallery() {
+  const g = document.getElementById("gal");
+  g.innerHTML = Array.from({ length: 12 }, () => { const st = randomState();
+    return `<figure><div class="stage open">${stageHTML(st, false)}</div><figcaption>${comboId(st)}</figcaption></figure>`; }).join("");
+  g.querySelectorAll("canvas.grain").forEach(grain);
+}
+function renderAll() { paintCtrl(); renderMain(); }
+document.getElementById("rand").onclick = () => { Object.assign(S, randomState()); renderAll(); };
+document.getElementById("reroll").onclick = renderGallery;
+</script>
+</body>
+</html>

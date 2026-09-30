@@ -1,0 +1,11 @@
+Use case: game-asset
+Asset type: background scene for a vertical 2D mobile horror game (hand-drawn style comparison mock)
+
+Subject: the view from inside an elevator car, looking out through the fully open sliding doors at a dim, empty residential corridor of an old Japanese apartment building (danchi / mansion common hallway) at night. The steel door frame of the elevator surrounds the view on the left, right and bottom. Beyond the doors: a long straight corridor receding to a vanishing point, a row of identical steel apartment doors on the right side, each with a small nameplate and a doorbell; on the left a concrete handrail wall open to the night outside; fluorescent tube lights on the ceiling, one of them flickering dimmer; a small potted plant by the second door; an umbrella leaning against the wall. No people.
+
+Framing: centered one-point perspective, symmetrical, the corridor vanishing point in the upper-middle of the image. Keep the top 12% and the bottom 20% of the image as plain elevator interior (dark ceiling panel at top, metal floor threshold at bottom) because game UI will be overlaid there.
+Mood / lighting: quiet, lonely, slightly uncanny, late night. Cold fluorescent light, deep shadows at the far end of the corridor. Unsettling but NOT gory, nothing overtly scary.
+Aspect: portrait, tall vertical phone screen (9:16).
+
+Constraints: no text, no numbers, no letters, no signs with writing, no logos, no watermarks, no people, no faces, no creatures.
+Style: hand-drawn illustration, pencil and ink lines with muted watercolor / gouache wash, slightly wobbly lines, paper texture, like an indie narrative game or a Japanese horror picture book. Desaturated with a sickly greenish fluorescent tint.

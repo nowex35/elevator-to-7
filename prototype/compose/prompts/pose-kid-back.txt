@@ -1,0 +1,16 @@
+Use case: game-asset
+Asset type: cut-out character sprite, alternate pose of an existing character. Use the reference image as the identity reference.
+
+Subject: the SAME boy as in the reference image: same short black hair, same navy jacket, shorts, knee socks, sneakers and black leather school backpack (randoseru). Now seen from directly BEHIND: he stands with his back to the camera, facing away, arms at his sides; the backpack is fully visible. His face is not visible. Full body.
+
+Look: NOT glamorous, NOT a model, NOT beautiful or handsome. A plain, real-looking ordinary person you would pass without noticing: imperfect skin, pores, dark circles, slightly unkempt hair, worn everyday clothes. Photographed like a candid, slightly harsh night photo, not a portrait session. Subtly unsettling, but nothing supernatural, no makeup effects, no gore.
+
+Framing: full body from head to feet, standing, centered, the whole figure fits in the frame with a small margin above the head and below the feet. Camera at chest height, straight on.
+Mood / lighting: lit only by a single cold overhead fluorescent tube slightly in front and above, like standing in a dim apartment corridor at night: shadows in the eye sockets and under the chin, slightly underexposed, desaturated, subtle film grain like a night smartphone photo. NOT studio light, NOT soft beauty light.
+Style: photorealistic.
+Aspect: portrait.
+Background: a perfectly flat, uniform, solid pure green chroma-key background (#00FF00), no gradient, no floor, no shadow on the background, so the person can be cut out cleanly. No green clothing or green objects, no green light spill on the person.
+
+Constraints: no text, no readable writing, no logos, no watermarks, not resembling any real or famous person, fully clothed, not gory.
+
+Output handling: save the generated image exactly as produced by image_gen. Do NOT remove the green background, do NOT run any chroma-key, masking or cleanup script, do NOT edit the pixels in any way.

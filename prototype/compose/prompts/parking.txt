@@ -1,0 +1,11 @@
+Use case: game-asset
+Asset type: background scene for a vertical 2D mobile horror game, photographic style. Another floor of the same building as the reference image.
+
+Subject: the view from inside the same elevator car as the reference image, with the doors fully open, but this floor is the building's underground parking level at night: a low concrete ceiling with pipes, a few parked ordinary cars, painted concrete pillars, oil stains on the floor, flickering fluorescent tubes, one far corner in deep darkness. No people.
+
+Framing: keep EXACTLY the same camera position, the same elevator door frame, the same elevator floor at the bottom and the same dark ceiling panel at the top as the reference image; only the view beyond the open doors changes. Keep the top 12% and bottom 20% as the elevator interior.
+Mood / lighting: cold, damp, lonely late night, slightly greenish fluorescent light, realistic, slightly grainy like a night smartphone photo.
+Style: photorealistic.
+Aspect: portrait (9:16), same size as the reference.
+
+Constraints: no text, no numbers, no letters, no license plates with readable characters, no signs with writing, no logos, no watermarks, no people, no faces, no creatures.

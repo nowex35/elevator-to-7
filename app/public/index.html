@@ -1,0 +1,891 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>7階行きのエレベーター</title>
+<!-- og:start (scripts/build-cards.mjs が書き換える) -->
+<meta name="description" content="深夜の団地のエレベーター。止まった階で、扉を開けるか、通り過ぎるか。">
+<meta property="og:type" content="website"><meta property="og:site_name" content="7階行きのエレベーター">
+<meta property="og:title" content="7階行きのエレベーター"><meta property="og:description" content="深夜の団地のエレベーター。止まった階で、扉を開けるか、通り過ぎるか。">
+<meta property="og:url" content="https://elevator7.nowex35.com/"><meta property="og:image" content="https://elevator7.nowex35.com/og/top.png?v=4">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="7階行きのエレベーター">
+<meta name="twitter:description" content="深夜の団地のエレベーター。止まった階で、扉を開けるか、通り過ぎるか。"><meta name="twitter:image" content="https://elevator7.nowex35.com/og/top.png?v=4">
+<!-- og:end -->
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; background:#000; color:#e8e8e4; font-family:system-ui,-apple-system,"Hiragino Sans",sans-serif; overflow:hidden; }
+  .stage { position:relative; width:min(100vw, calc(100dvh * 941 / 1672)); aspect-ratio:941/1672; margin:0 auto; overflow:hidden; background:#000; container-type:inline-size; user-select:none; }
+  .stage > * { position:absolute; }
+  .L { inset:0; width:100%; height:100%; object-fit:cover; }
+
+  /* 廊下(開口部の向こう側)。枠で隠れるよう開口部で切り取る */
+  .corr { inset:0; clip-path:inset(13.3% 10.6% 19.5% 9.8%); }
+  .corr > * { position:absolute; }
+  .person img { display:block; height:100%; width:auto; filter:brightness(.58) contrast(1.06) saturate(.7); }
+  .person .shade { position:absolute; inset:0; background:linear-gradient(#f2fbf4 0%, transparent 30%, rgba(0,0,0,.6) 100%); mix-blend-mode:soft-light; -webkit-mask-size:100% 100%; mask-size:100% 100%; }
+  .person.boarding { transition:opacity .7s ease .2s; opacity:0 !important; }
+  .person.alt { opacity:0; } .corr.bowing .person:not(.alt) { opacity:0; } .corr.bowing .person.alt { opacity:1; }
+  .shadow { border-radius:50%; background:radial-gradient(closest-side, rgba(0,0,0,.75), rgba(0,0,0,.35) 60%, transparent); filter:blur(3px); }
+  .label { position:absolute; background:#e9e6dc; color:#222; font:600 2.1cqw/1.2 system-ui; padding:.4cqw .8cqw; transform:rotate(-2deg); white-space:nowrap; filter:brightness(.62); }
+
+  /* 扉:開口部でクリップ。映り込みと天井の光は .rfix で扉の移動を打ち消して画面に固定 */
+  .doors { left:9.8%; top:13.3%; width:79.6%; height:67.2%; overflow:hidden; }
+  .door { position:absolute; top:0; height:100%; width:50%; overflow:hidden; transition:transform .9s cubic-bezier(.6,.05,.3,1); }
+  .door > img { width:100%; height:100%; object-fit:cover; display:block; }
+  .door.l { left:0; } .door.r { left:50%; }
+  .stage.open .door.l { transform:translateX(-101%); } .stage.open .door.r { transform:translateX(101%); }
+  .rfix { position:absolute; inset:0; transition:transform .9s cubic-bezier(.6,.05,.3,1); }
+  .rfix.light { mix-blend-mode:hard-light; } .rfix.mirror { mix-blend-mode:screen; }
+  .stage.open .door.l .rfix { transform:translateX(101%); } .stage.open .door.r .rfix { transform:translateX(-101%); }
+  .refl { position:absolute; pointer-events:none; filter:blur(2.2px) grayscale(.4) brightness(1.2); transform:scaleX(-1); transform-origin:50% 100%; }
+  .refl img { height:100%; width:auto; display:block; }
+
+  /* 照明(廊下側。開口部で切り取る) */
+  .fx > div { position:absolute; inset:0; pointer-events:none; }
+  .fx .flicker { background:#000; opacity:0; animation:flick 3.7s infinite; }
+  @keyframes flick { 0%,41%,44%,47%,100% { opacity:0; } 42% { opacity:.45; } 45% { opacity:.3; } 46% { opacity:.55; } 72% { opacity:0; } 73% { opacity:.4; } 74% { opacity:0; } }
+  /* 置き物・異変・奥の暗がりは、すべて同じ位置に重ねる(人物より後ろ) */
+  #bgAnom > * { position:absolute; inset:0; width:100%; height:100%; }
+  /* 奥が暗い照明。fardark は人物の後ろに置き、奥に立つ人だけ .infar で暗くする。shadowed は人物の手前に置き、顔にもかかる(どちらも異変ではない) */
+  .fardark { pointer-events:none; background:radial-gradient(ellipse 26% 20% at 50% 37%, rgba(0,0,0,.92) 35%, transparent 100%); }
+  .person.infar { filter:brightness(.3); }
+  .fx .out { opacity:0; transition:opacity .25s; }
+  .fx .out.o1 { background:radial-gradient(ellipse 22% 17% at 50% 37%, rgba(0,0,0,.95) 45%, transparent 100%); }
+  .fx .out.o2 { background:radial-gradient(ellipse 48% 36% at 50% 37%, rgba(0,0,0,.95) 45%, transparent 100%); }
+  .fx .out.o3 { background:radial-gradient(ellipse 90% 70% at 50% 40%, rgba(0,0,0,.93) 45%, transparent 100%); }
+  .fx.going .out.o1 { opacity:1; transition-delay:1.4s; } .fx.going .out.o2 { opacity:1; transition-delay:2.6s; } .fx.going .out.o3 { opacity:1; transition-delay:3.8s; }
+  .poster .note { font-size:2.4cqw; color:#555; margin-top:.8cqw; line-height:1.4; }
+  .grain { inset:0; pointer-events:none; opacity:.09; mix-blend-mode:overlay; }
+  .vig { inset:0; pointer-events:none; background:radial-gradient(ellipse at 50% 42%, transparent 52%, rgba(0,0,0,.6) 100%); }
+  .dim { inset:0; background:#000; opacity:0; pointer-events:none; transition:opacity .15s; }
+  /* ドボンの一撃:画面いっぱいの顔が迫る。明滅は「出る→黒」の1回だけ(点滅で気分が悪くなる人がいるため) */
+  .scare { z-index:7; inset:0; opacity:0; pointer-events:none; overflow:hidden; background:#000; }
+  .scare.on { opacity:1; }
+  .scare img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:50% 40%; filter:grayscale(1) contrast(1.6) brightness(.72) blur(.4px); transform-origin:50% 38%; }
+  .scare img.ghost { opacity:.35; mix-blend-mode:screen; filter:grayscale(1) contrast(1.4) brightness(.7) blur(2px); }
+  .scare::after { content:""; position:absolute; inset:0; background:radial-gradient(ellipse 55% 42% at 50% 36%, transparent 30%, rgba(0,0,0,.92) 100%); }
+  .scare.on img { animation:lunge .38s cubic-bezier(.2,.8,.3,1) both; }
+  .scare.on img.ghost { animation:lungeGhost .38s cubic-bezier(.2,.8,.3,1) both; }
+  @keyframes lunge { 0% { transform:scale(1.5); } 25% { transform:scale(1.6) translate(-1.5%,1%); } 50% { transform:scale(1.7) translate(1.2%,-.8%); } 75% { transform:scale(1.78) translate(-.8%,-1%); } 100% { transform:scale(1.85); } }
+  /* 生成した縦長の顔は、すでに寄りの構図なので拡大を控えめにする */
+  .scare.full img { filter:grayscale(.85) contrast(1.35) brightness(.95) blur(.3px); }
+  .scare.full img.ghost { filter:grayscale(1) contrast(1.2) brightness(.9) blur(2px); }
+  .scare.full.on img { animation-name:lungeFull; }
+  .scare.full.on img.ghost { animation-name:lungeFullGhost; }
+  @keyframes lungeFull { 0% { transform:scale(1.04); } 25% { transform:scale(1.1) translate(-1.5%,1%); } 50% { transform:scale(1.16) translate(1.2%,-.8%); } 75% { transform:scale(1.22) translate(-.8%,-1%); } 100% { transform:scale(1.28); } }
+  @keyframes lungeFullGhost { 0% { transform:scale(1.1) translate(3%,0); } 50% { transform:scale(1.22) translate(-3%,1%); } 100% { transform:scale(1.36) translate(2%,-1%); } }
+  @keyframes lungeGhost { 0% { transform:scale(1.58) translate(3%,0); } 50% { transform:scale(1.78) translate(-3%,1%); } 100% { transform:scale(1.95) translate(2%,-1%); } }
+
+  /* HUD */
+  .hud { left:0; right:0; top:0; height:12%; display:flex; align-items:center; justify-content:center; }
+  .ind { font:700 6cqw/1 ui-monospace,Menlo,monospace; color:#ff6a3d; background:#120806; padding:1.2cqw 3cqw; border-radius:1cqw; letter-spacing:.5cqw; text-shadow:0 0 2cqw rgba(255,90,40,.7); min-width:22cqw; text-align:center; }
+  .ind .arr { font-size:3.6cqw; vertical-align:.6cqw; margin-right:1.5cqw; }
+  .ind.moving .arr { animation:blink .5s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:0; } }
+  .paper { left:4%; top:3%; width:10cqw; height:13cqw; background:#e2ded2; border-radius:.6cqw; box-shadow:0 .5cqw 1.5cqw rgba(0,0,0,.6); filter:brightness(.55); cursor:pointer; padding:1.5cqw 1.2cqw; }
+  .paper i { display:block; height:.6cqw; background:#8b877d; margin:0 0 1.1cqw; border-radius:1px; }
+  /* 言語:地球のマークを押すと、一覧から選ぶ */
+  .lang { z-index:6; right:4%; top:4%; }
+  .langbtn { display:flex; align-items:center; justify-content:center; width:8.6cqw; height:8.6cqw; padding:0; border-radius:50%; background:rgba(0,0,0,.5); border:1px solid #444; cursor:pointer; }
+  .langbtn svg { width:5.2cqw; height:5.2cqw; fill:none; stroke:#aaa; stroke-width:1.6; }
+  .langbtn[aria-expanded="true"] { border-color:#ff7a4a; }
+  .langmenu { position:absolute; right:0; top:calc(100% + 1.5cqw); min-width:32cqw; padding:1cqw; background:#16181a; border:1px solid #3b4044; border-radius:1.5cqw; box-shadow:0 1.5cqw 4cqw rgba(0,0,0,.8); }
+  .langmenu[hidden] { display:none; }
+  .langmenu button { display:flex; align-items:center; gap:1.6cqw; width:100%; padding:2.2cqw 2.6cqw; background:none; border:0; border-radius:1cqw; color:#cfccc3; font:600 3.6cqw system-ui; text-align:left; cursor:pointer; white-space:nowrap; }
+  .langmenu button::before { content:"✓"; width:3cqw; visibility:hidden; }
+  .langmenu button[aria-checked="true"] { color:#ffb08a; }
+  .langmenu button[aria-checked="true"]::before { visibility:visible; }
+  .langmenu button:active { background:#25282b; }
+  .bottom { left:0; right:0; bottom:0; height:19.5%; display:flex; align-items:center; justify-content:center; gap:7%; }
+  .panel { display:grid; grid-template-columns:repeat(2, 6.6cqw); gap:1.4cqw; padding:2cqw; background:#1b1e20; border-radius:1.5cqw; border:.4cqw solid #3b4044; }
+  .panel b { width:6.6cqw; height:6.6cqw; border-radius:50%; border:.4cqw solid #5d6368; display:flex; align-items:center; justify-content:center; font:700 2.8cqw ui-monospace,Menlo,monospace; color:#8a8f93; background:#2a2e31; }
+  .panel b.on { color:#ffb08a; border-color:#ff7a4a; box-shadow:0 0 2cqw rgba(255,110,60,.6), inset 0 0 1.5cqw rgba(255,110,60,.4); }
+  .ctl { display:flex; gap:4cqw; }
+  .ctl button { width:19cqw; height:19cqw; border-radius:50%; border:.6cqw solid #8b9196; background:radial-gradient(#3d4246,#222629); display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; box-shadow:inset 0 -.8cqw 1.5cqw rgba(0,0,0,.5); }
+  .ctl button svg { width:11cqw; height:7cqw; }
+  .ctl button svg * { fill:#d9dcd8; stroke:#d9dcd8; }
+  .ctl button:active { transform:scale(.95); }
+  .ctl button.on { border-color:#ff7a4a; box-shadow:0 0 2.5cqw rgba(255,110,60,.55), inset 0 0 1.5cqw rgba(255,110,60,.35); }
+  .ctl button.on svg * { fill:#ffb08a; stroke:#ffb08a; }
+  .ctl button[disabled] { opacity:.4; pointer-events:none; }
+  .caption { left:8%; right:8%; top:74%; text-align:center; font:500 3.4cqw/1.4 system-ui; color:#ddd; text-shadow:0 0 1cqw #000, 0 0 2cqw #000; opacity:0; transition:opacity .4s; pointer-events:none; }
+  .caption.on { opacity:1; }
+
+  /* オーバーレイ(貼り紙/結果) */
+  .ov { z-index:5; inset:0; background:rgba(0,0,0,.82); display:flex; flex-direction:column; align-items:center; justify-content:safe center; padding:5cqw 5cqw; gap:3cqw; overflow:auto; }
+  .ov.hide { display:none; }
+  /* 共有メニューが使えないときに出す、保存用の画像 */
+  .imgview { z-index:7; background:rgba(0,0,0,.92); }
+  .imgview img { max-width:100%; max-height:72%; border-radius:1cqw; box-shadow:0 1cqw 4cqw rgba(0,0,0,.8); -webkit-touch-callout:default; user-select:auto; }
+  .imgview .hint { font-size:3cqw; color:#bbb; }
+  .poster { flex:none; background:#ebe7da; color:#1d1d1b; width:100%; padding:4.5cqw 5cqw 3.5cqw; border-radius:.8cqw; box-shadow:0 2cqw 6cqw rgba(0,0,0,.7); font-family:"Hiragino Mincho ProN","Yu Mincho",serif; }
+  .poster h2 { margin:0 0 .6cqw; font-size:4.4cqw; text-align:center; letter-spacing:.1cqw; white-space:nowrap; }
+  .poster .sub { text-align:center; font-size:2.6cqw; margin:0 0 2.6cqw; color:#555; }
+  .poster ol { margin:0; padding-left:5cqw; font-size:3.05cqw; line-height:1.5; }
+  .poster li { margin:0 0 1.1cqw; }
+  .poster li::marker { font-weight:700; }
+  .poster .sign { text-align:right; font-size:2.6cqw; margin-top:1.2cqw; color:#555; }
+  .intro { flex:none; font-size:3.1cqw; line-height:1.55; text-align:center; color:#ccc; }
+  .intro b { color:#fff; }
+  .go { flex:none; width:16cqw; height:16cqw; border-radius:50%; border:.7cqw solid #ff7a4a; background:#2a2e31; color:#ffb08a; font:700 7cqw ui-monospace,Menlo,monospace; box-shadow:0 0 4cqw rgba(255,110,60,.5); cursor:pointer; }
+  .go small { display:block; font:500 2.2cqw system-ui; color:#aaa; margin-top:-.6cqw; }
+  .row { display:flex; gap:2.5cqw; flex-wrap:wrap; justify-content:center; }
+  /* 結果画面のボタン:記録紙と同じ幅の2列。2つ並ぶボタンは半分ずつ、もう一度プレイは2列ぶん */
+  .actions { display:grid; grid-template-columns:1fr 1fr; gap:2.5cqw; width:100%; flex:none; }
+  /* 見た目はエレベーターの操作盤:暗い金属の板に明朝の文字。「もう一度プレイ」だけ、7のボタンと同じ橙色でゆっくり灯る(点滅はさせない) */
+  .actions .btn { display:flex; align-items:center; justify-content:center; gap:1.6cqw; width:100%; padding:3.4cqw 2cqw; border-radius:1.2cqw;
+    border:.4cqw solid #3b4044; background:linear-gradient(#2a2d30, #141618); color:#cfccc3;
+    font:600 4.3cqw "Hiragino Mincho ProN","Yu Mincho",serif; letter-spacing:.35cqw;
+    box-shadow:inset 0 .3cqw 0 rgba(255,255,255,.07), inset 0 -1cqw 2cqw rgba(0,0,0,.6), 0 .8cqw 2cqw rgba(0,0,0,.7); }
+  .actions .btn:active { transform:translateY(.3cqw); box-shadow:inset 0 .8cqw 2cqw rgba(0,0,0,.8); }
+  /* X は X のブランドガイドラインどおり、黒地に白いロゴ */
+  .actions .btn.x { background:#000; color:#fff; }
+  .actions .btn.x svg { height:4cqw; }
+  .actions .btn.primary { border-color:#ff7a4a; background:#1d1f21; color:#ffb08a; animation:glow 3.6s ease-in-out infinite; }
+  @keyframes glow { 0%, 100% { box-shadow:0 0 3cqw rgba(255,110,60,.45), inset 0 0 2cqw rgba(255,110,60,.3); } 50% { box-shadow:0 0 1.2cqw rgba(255,110,60,.2), inset 0 0 .8cqw rgba(255,110,60,.12); } }
+  .actions .wide { grid-column:1 / -1; }
+  /* LINE は公式のボタン画像をそのまま使う(色・形は変えない)。枠を画像と同じ緑(#06C755)で塗って、ほかのボタンと同じ大きさにし、画像は中央に置く */
+  .actions .lineImg { display:flex; align-items:center; justify-content:center; background:#06c755; border-radius:1.2cqw; overflow:hidden;
+    box-shadow:0 .8cqw 2cqw rgba(0,0,0,.7); }
+  .actions .lineImg:active { transform:translateY(.3cqw); }
+  .actions .lineImg img { display:block; max-width:92%; max-height:100%; width:auto; height:auto; }
+  .btn { font:600 3.4cqw system-ui; padding:2.4cqw 4.4cqw; border-radius:6cqw; border:1px solid #555; background:#1b1e20; color:#eee; cursor:pointer; text-decoration:none; }
+  .btn.primary { background:#eee; color:#111; border-color:#eee; }
+  /* X の公式ボタン:X のブランドガイドライン(基本色は黒と白。暗い背景では白いロゴ)に沿う */
+  .btn.x { display:inline-flex; align-items:center; gap:1.6cqw; background:#000; color:#fff; border-color:#6e6e6e; }
+  .btn.x svg { height:3.3cqw; width:auto; fill:#fff; }
+  .log { background:#e4e0d3; color:#1d1d1b; width:100%; padding:5cqw 6cqw; border-radius:.5cqw; box-shadow:0 2cqw 6cqw rgba(0,0,0,.7); font:3.5cqw/1.7 ui-monospace,"Osaka-Mono",Menlo,monospace; filter:brightness(.88); }
+  .log h3 { margin:0 0 .5cqw; font:700 4.4cqw "Hiragino Mincho ProN","Yu Mincho",serif; text-align:center; letter-spacing:.4cqw; }
+  .log .no { text-align:center; font-size:2.8cqw; color:#555; margin:0 0 3cqw; }
+  .log .ln { display:flex; gap:3cqw; white-space:nowrap; }
+  .log .ln span:last-child { white-space:normal; }
+  .log .cut { margin-top:2cqw; color:#6b2a20; font-family:"Hiragino Mincho ProN","Yu Mincho",serif; }
+  .log .why { margin-top:2cqw; font-size:3cqw; line-height:1.6; font-family:"Hiragino Mincho ProN","Yu Mincho",serif; }
+  .log .why b { display:block; font-size:2.8cqw; color:#555; font-family:system-ui,sans-serif; font-weight:600; }
+  .log .rep { margin-top:3cqw; padding-top:2cqw; border-top:1px dashed #999; }
+  .log .rep h4 { margin:0 0 1cqw; font:700 3.4cqw "Hiragino Mincho ProN","Yu Mincho",serif; }
+  .log .rep .it { display:flex; justify-content:space-between; gap:2cqw; font-size:3cqw; }
+  .log .rep .it .st { color:#8a6a1e; margin-right:1.5cqw; }
+  .log .rep .tot { display:flex; justify-content:space-between; font-weight:700; margin-top:1cqw; font-size:3.6cqw; }
+  .log .rep .tot.lost span:last-child { text-decoration:line-through; color:#888; }
+  .log .rep .void { margin-top:1cqw; font-size:2.8cqw; color:#6b2a20; font-family:"Hiragino Mincho ProN","Yu Mincho",serif; }
+  .log .tally { margin-top:3cqw; padding-top:2cqw; border-top:1px dashed #999; font-size:2.9cqw; line-height:1.6; }
+  .log .tally h4 { margin:0 0 1cqw; font:700 3.4cqw "Hiragino Mincho ProN","Yu Mincho",serif; }
+  .log .rules { margin-top:3cqw; padding-top:2cqw; border-top:1px dashed #999; font-size:2.8cqw; color:#555; }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <img class="L" id="plate" alt="">
+  <div class="L" id="bgAnom"></div>
+  <div class="corr" id="corr"></div>
+  <div class="corr fx" id="fx"></div>
+  <div class="doors">
+    <div class="door l"><img src="parts/door-l.webp" alt=""><div class="rfix light" id="litL"></div><div class="rfix mirror" id="mirL"></div></div>
+    <div class="door r"><img src="parts/door-r.webp" alt=""><div class="rfix light" id="litR"></div><div class="rfix mirror" id="mirR"></div></div>
+  </div>
+  <canvas class="grain" id="grain"></canvas>
+  <div class="vig"></div>
+  <div class="hud"><div class="ind" id="ind"><span class="arr">▲</span><span id="fl">1</span></div></div>
+  <div class="paper" id="paper" title="貼り紙"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="lang" id="langBox">
+    <button class="langbtn" id="lang" aria-haspopup="menu" aria-expanded="false" aria-label="言語 / Language"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9M12 3c-2.5 2.6-3.8 5.6-3.8 9s1.3 6.4 3.8 9"/></svg></button>
+    <div class="langmenu" id="langMenu" role="menu" hidden>
+      <button role="menuitemradio" data-lang="ja">日本語</button>
+      <button role="menuitemradio" data-lang="en">English</button>
+    </div>
+  </div>
+  <div class="caption" id="cap"></div>
+  <div class="bottom">
+    <div class="panel" id="panel"></div>
+    <div class="ctl">
+      <button id="openBtn" aria-label="開" disabled><svg viewBox="0 0 44 28"><path d="M2 14 L16 4 L16 24 Z"/><path d="M42 14 L28 4 L28 24 Z"/><line x1="22" y1="2" x2="22" y2="26" stroke-width="2.4"/></svg></button>
+      <button id="closeBtn" aria-label="閉" disabled><svg viewBox="0 0 44 28"><path d="M19 14 L5 4 L5 24 Z"/><path d="M25 14 L39 4 L39 24 Z"/><line x1="22" y1="2" x2="22" y2="26" stroke-width="2.4"/></svg></button>
+    </div>
+  </div>
+  <div class="dim" id="dim"></div>
+  <div class="scare" id="scare"></div>
+  <div class="ov" id="ovPoster"></div>
+  <div class="ov hide res" id="ovResult"></div>
+</div>
+
+<script>
+// ============ 素材 ============
+const P = "parts/";
+const PEOPLE = {
+  a:       { src: "person-a.webp",  s: 1,    ja: "管理人",       en: "the caretaker" },
+  salary:  { src: "p-salary.webp",  s: 1.02, ja: "サラリーマン", en: "the office worker" },
+  pajama:  { src: "p-pajama.webp",  s: .94,  ja: "パジャマの女", en: "the woman in pajamas" },
+  deliv:   { src: "p-deliv.webp",   s: 1,    ja: "配達員",       en: "the delivery man" },
+  kid:     { src: "p-kid.webp",     s: .7,   ja: "男の子",       en: "the boy" },
+  hood:    { src: "p-hood.webp",    s: 1,    ja: "フードの男",   en: "the hooded man" },
+  monk:    { src: "p-monk.webp",    s: .97,  ja: "お坊さん",     en: "the monk" },
+  granny:  { src: "p-granny.webp",  s: .78,  ja: "おばあさん",   en: "the old woman" },
+  woman:   { src: "p-woman.webp",   s: .95,  ja: "女",           en: "the woman" },
+  mourner: { src: "p-mourner.webp", s: .93,  ja: "喪服の女",     en: "the woman in mourning" },
+  funeral: { src: "p-funeral.webp", s: 1,    ja: "葬儀社の男",   en: "the funeral director" },
+  oldman:  { src: "p-oldman.webp",  s: .92,  ja: "寝間着の老人", en: "the barefoot old man" },
+  // 別の姿勢。of = 元の人物(名前と縮尺を引き継ぐ)
+  a_bow:    { src: "pose-a-bow.webp",    of: "a" },
+  a_back:   { src: "pose-a-back.webp",   of: "a" },
+  kid_back: { src: "pose-kid-back.webp", of: "kid" },
+};
+// 人物画像(parts/*.webp)の幅と高さ。画像の到着を待たずに配置を決められるよう、表にしておく。
+// 画像を差し替えたら測り直す(全員を同じ倍率で縮めているので、高さの比が姿勢違いの縮尺になる)
+const DIM = {
+  a: [270, 830], salary: [296, 873], pajama: [349, 877], deliv: [327, 862], kid: [330, 886], hood: [268, 858],
+  monk: [287, 866], granny: [271, 871], woman: [288, 890], mourner: [274, 876], funeral: [334, 842], oldman: [289, 884],
+  a_bow: [250, 803], a_back: [277, 825], kid_back: [271, 863],
+};
+const AR = {}, NH = {}; // 縦横比と高さ
+for (const [k, [w, h]] of Object.entries(DIM)) { AR[k] = w / h; NH[k] = h; }
+// 姿勢違いは、元の人物と同じ縮尺で描く(お辞儀なら、その分だけ低く見える)
+for (const [k, v] of Object.entries(PEOPLE)) if (v.of) Object.assign(v, { ja: PEOPLE[v.of].ja, en: PEOPLE[v.of].en, s: PEOPLE[v.of].s * NH[k] / NH[v.of] });
+// 立ち位置(941x1672 座標)
+const POS = {
+  board: { cx: 500, feet: 1300, h: 860 },
+  far:   { cx: 600, feet: 1010, h: 430 },
+  side:  { cx: 700, feet: 1180, h: 700 },
+  pass:  { cx: 300, feet: 1150, h: 640 },
+};
+
+// ============ 住人の「いつも」(階ごとの候補。夜ごとにどれか1つ) ============
+// board: 乗るか / dest: 降りる階 / press: 自分で押すボタン / cap: 字幕 / at: 立ち位置
+const ROUTINE = {
+  2: [{ p: "salary", board: true, dest: 4, at: "board" },
+      { p: "pajama", board: false, at: "pass", cap: "pajama" }],
+  3: [{ p: "a", board: true, dest: 5, at: "board", bow: true },
+      { p: "deliv", board: true, dest: 6, at: "board" }],
+  4: [{ p: "kid", board: true, dest: 6, press: 6, at: "board" },
+      { p: "hood", board: false, at: "far" }],
+  5: [{ p: "monk", board: true, dest: 6, press: 6, at: "board", cap: "gassho" },
+      { p: "granny", board: true, dest: 6, at: "board", cap: "sumimasen" },
+      { p: "woman", board: true, dest: 6, at: "board" }],
+  6: [{ p: "mourner", board: false, at: "side", cap: "bow" },
+      { p: "funeral", board: false, at: "side", cap: "kochira" }],
+};
+const HOME = {}; for (const f in ROUTINE) for (const r of ROUTINE[f]) HOME[r.p] = { f: +f, ...r };
+
+// ============ 文言 ============
+const T = {
+  ja: {
+    title: "夜間のエレベーターご利用について", sub: "— 本日の注意事項 —", sign: "団地管理組合",
+    intro: "部屋は<b>7階</b>。乗ったら、<b>振り向かない</b>こと。<br>止まったら、<b>開ける</b>か、<b>閉</b>で通り過ぎるか。<br>開けたら、おかしければ<b>閉める</b>。なければ<b>待つ</b>。<br>見届けたものはスコアになる。失敗すれば<b>0</b>。",
+    go: "7を押す", paper: "貼り紙",
+    rules: {
+      R1: "お子さまがおひとりで乗られた際、行き先ボタンを押されない場合は、扉をお閉めください。",
+      R2: "本日6階にてご葬儀がございます。6階以外で喪服の方をお見かけした場合は、扉をお閉めください。",
+      R3: "裸足の方は、お乗せにならないでください。",
+      R5: "廊下に履物がそろえて置かれている階では、扉をお閉めください。",
+      R6: "住人の方が、いつもと違う階からお乗りになった場合は、扉をお閉めください。",
+      R7: "お坊様がお降りになる階では、扉が閉まるまで頭をお下げください。",
+      R8: "22時以降、4階のボタンは押さないでください。",
+      R9: "扉に映るご自身に、話しかけないでください。",
+      R11: "前の階と同じ物が廊下に置かれている場合は、扉をお閉めください。",
+      R12: "扉を開けたあと、廊下の明かりが奥から消えていく場合は、扉をお閉めください。",
+      R13: "いつも挨拶をされる方が、挨拶をされない場合は、扉をお閉めください。",
+    },
+    catchAll: "上記のほか、少しでも異常を感じた場合は、扉をお閉めください。",
+    note: "※廊下の照明のちらつきは点検中のためです。お気になさらないでください。",
+    caps: { nonod: "……会釈がない。じっとこちらを見ている。", wake: "……通夜の参列者のようだ。", noturn: "……振り向かないほうがいい。", r707: "「707の方ですよね」", monk7: "「7階まで、ご一緒します」", nod: "……会釈された。", gassho: "……手を合わせている。", sumimasen: "「すみませんねぇ」", bow: "……深く一礼された。", kochira: "「こちらです」", pajama: "……ゴミを出しに行くらしい。", home: "「おかえりなさい」" },
+    logTitle: "夜間運行記録", night: n => `記録番号 ${serial(n)}`,
+    L: { passed: "開けずに通過した", empty: "誰もいなかった", boarded: n => `${n}が乗った`, stood: n => `${n}がいた`, closed: "扉を閉めた", letIn: n => `${n}を乗せた`, notClosed: "扉を閉めなかった", wrongClose: "扉を閉めた", home: "おかえりなさい", cut: "――記録はここで途切れている" },
+    repTitle: "出会った現象", total: "スコア", rewardLabel: "スコア", yen: n => n.toLocaleString("ja-JP"),
+    void: "記録が途中で途切れたため、スコアは記録されません。", none: "(なし)",
+    home2: "7階に帰り着いた", cutAt: f => `記録は${f}階で途切れている`,
+    ph: { QUIET: "静かな階", R: n => `${n}に会った`, WAKE_LINE: "通夜の列", SHOES: "そろえられた赤い靴", OLDMAN: "裸足の老人", WRONG_FLOOR: n => `いつもと違う階の${n}`, MOURNER_OFF6: "6階ではない喪服",
+      LIGHTS_OUT: "消えていく明かり", OJISAN_NO_NOD: "会釈しない管理人", FINGERS: "隙間の指", INDICATOR_13: "13階", CAPTION_707: "「707の方ですよね」", PROP_FOLLOW: n => `ついてくる${n}`, DELIV_LABEL: "707号室宛の荷物",
+      KID_NOBUTTON: "行き先を押さない子", MONK_7: "7階まで行くお坊さん", REBOARD: n => `また乗ってくる${n}`, ALL_BUTTONS: "全部点いたボタン", HOME_EARLY: "早すぎる「おかえりなさい」", OJISAN_BACK: "背を向けた管理人", KID_BACK: "背を向けた男の子" },
+    props: { tricycle: "三輪車", box: "段ボール箱", umbrella: "ビニール傘" },
+    share: "Xでシェア", xBtn: L => `${L}<span>でシェア</span>`, line: "LINEで送る", image: "画像で共有", copy: "コピー", copied: "コピーしました", replay: "もう一度プレイ",
+    saveHint: "長押しで保存できます", save: "画像を保存", close: "閉じる",
+    whyTitle: "何が起きていたか",
+    tallyTitle: "集計",
+    rank: r => r.total < 100 ? `あなたのスコアは ${r.total.toLocaleString("ja-JP")}人中 ${r.place}位` : `あなたのスコアは 上位${r.topPercent}%`,
+    why: { WRONG_FLOOR: (n, h) => `${n}は、いつも${h}階から乗る。`, REBOARD: n => `${n}は、ひとつ前の階で乗ったばかりだった。`,
+      MOURNER_OFF6: "喪服の人がいるのは、6階の通夜だけのはずだった。", OLDMAN: "その人は、裸足だった。", SHOES: "廊下に、赤い靴がそろえて置かれていた。",
+      KID_NOBUTTON: "男の子は、行き先のボタンを押さなかった。", PROP_FOLLOW: (n, h, pr) => `${pr}が、前の階からついてきていた。`, LIGHTS_OUT: "廊下の明かりが、奥から消えていった。",
+      OJISAN_NO_NOD: "いつも会釈する管理人が、会釈しなかった。", FINGERS: "手前のドアの隙間から、指が出ていた。", INDICATOR_13: "階数表示が「13」だった。この建物に13階はない。",
+      CAPTION_707: "教えていないのに、あなたの部屋番号を知っていた。", DELIV_LABEL: "荷物の宛名は、あなたの部屋だった。", MONK_7: "通夜は6階なのに、お坊さんは7階まで行くと言った。",
+      ALL_BUTTONS: "扉が開いた瞬間、すべてのボタンが点いた。", HOME_EARLY: "そこは、まだ7階ではなかった。", OJISAN_BACK: "いつも会釈する管理人が、こちらに背を向けて立っていた。", KID_BACK: "男の子は、ずっとこちらに背を向けていた。", NORMAL: "この階には、何もおかしなことはなかった。" },
+    gameName: "7階行きのエレベーター", tag: "#7階行きのエレベーター", room: "707号室 様",
+  },
+  en: {
+    title: "Night-time Elevator Use", sub: "— Notice for tonight —", sign: "Residents' Association",
+    intro: "Your room is on <b>7</b>. Once inside, <b>don't turn around</b>.<br>At each stop, <b>open</b>, or <b>CLOSE</b> to pass.<br>Once open: if something's wrong, <b>close</b>. If not, <b>wait</b>.<br>What you see through scores. Fail, and it's <b>0</b>.",
+    go: "Press 7", paper: "Notice",
+    rules: {
+      R1: "If a child rides alone and does not press a floor button, please close the doors.",
+      R2: "A funeral is being held on the 6th floor tonight. If you see anyone in mourning clothes on another floor, please close the doors.",
+      R3: "Please do not let barefoot persons board.",
+      R5: "If shoes have been neatly placed in the hallway, please close the doors.",
+      R6: "If a resident boards from a floor they don't usually use, please close the doors.",
+      R7: "On the floor where the monk gets off, keep your head bowed until the doors close.",
+      R8: "After 10 p.m., do not press the button for the 4th floor.",
+      R9: "Do not speak to yourself in the reflection of the doors.",
+      R11: "If the same object from the previous floor is placed in this hallway, please close the doors.",
+      R12: "If the hallway lights go out one by one after you open the doors, please close the doors.",
+      R13: "If someone who always greets you does not greet you, please close the doors.",
+    },
+    catchAll: "In any other case, if anything at all feels wrong, please close the doors.",
+    note: "* Flickering hallway lights are due to maintenance. Please disregard them.",
+    caps: { nonod: "...no nod. He just stares at you.", wake: "...mourners, here for the wake.", noturn: "...better not turn around.", r707: "\"You're from 707, aren't you?\"", monk7: "\"I'll ride with you to the 7th floor.\"", nod: "...he nods at you.", gassho: "...his palms are pressed together.", sumimasen: "\"Sorry to trouble you, dear.\"", bow: "...she bows deeply.", kochira: "\"This way, please.\"", pajama: "...taking out the trash, it seems.", home: "\"Welcome home.\"" },
+    logTitle: "NIGHT OPERATION LOG", night: n => `Log No. ${serial(n)}`,
+    L: { passed: "passed without opening", empty: "no one there", boarded: n => `${n} got on`, stood: n => `${n} was there`, closed: "doors closed", letIn: n => `let ${n} in`, notClosed: "doors left open", wrongClose: "doors closed", home: "welcome home", cut: "— the log ends here" },
+    repTitle: "PHENOMENA ENCOUNTERED", total: "Score", rewardLabel: "Score", yen: n => n.toLocaleString("en-US"),
+    void: "The log was cut short. No score is recorded.", none: "(none)",
+    home2: "Made it home to 7", cutAt: f => `The log ends on floor ${f}`,
+    ph: { QUIET: "A quiet floor", R: n => `met ${n}`, WAKE_LINE: "The wake procession", SHOES: "Red shoes, neatly placed", OLDMAN: "The barefoot old man", WRONG_FLOOR: n => `${n}, on the wrong floor`, MOURNER_OFF6: "Mourning clothes, wrong floor",
+      LIGHTS_OUT: "Lights going out", OJISAN_NO_NOD: "The caretaker who didn't nod", FINGERS: "Fingers in the gap", INDICATOR_13: "The 13th floor", CAPTION_707: "\"You're from 707\"", PROP_FOLLOW: n => `The ${n} that follows`, DELIV_LABEL: "A parcel for Room 707",
+      KID_NOBUTTON: "The boy who pressed nothing", MONK_7: "The monk going to 7", REBOARD: n => `${n}, again`, ALL_BUTTONS: "Every button lit", HOME_EARLY: "\"Welcome home\", too early", OJISAN_BACK: "The caretaker with his back turned", KID_BACK: "The boy with his back turned" },
+    props: { tricycle: "tricycle", box: "box", umbrella: "umbrella" },
+    share: "Share on X", xBtn: L => `<span>Share on</span>${L}`, line: "Send on LINE", image: "Share image", copy: "Copy", copied: "Copied", replay: "Play again",
+    saveHint: "Press and hold to save", save: "Save image", close: "Close",
+    whyTitle: "What was wrong",
+    tallyTitle: "TALLY",
+    rank: r => r.total < 100 ? `Your score: #${r.place} of ${r.total}` : `Your score: top ${r.topPercent}%`,
+    why: { WRONG_FLOOR: (n, h) => `${n[0].toUpperCase() + n.slice(1)} always gets on at floor ${h}.`, REBOARD: n => `${n[0].toUpperCase() + n.slice(1)} had just gotten on one floor below.`,
+      MOURNER_OFF6: "Mourners should only be at the wake on the 6th floor.", OLDMAN: "They were barefoot.", SHOES: "Red shoes had been neatly placed in the hallway.",
+      KID_NOBUTTON: "The boy never pressed a floor button.", PROP_FOLLOW: (n, h, pr) => `The ${pr} had followed you from the floor below.`, LIGHTS_OUT: "The hallway lights were going out, one by one.",
+      OJISAN_NO_NOD: "The caretaker, who always nods, did not nod.", FINGERS: "Fingers were showing through the gap of the nearest door.", INDICATOR_13: "The display read \"13\". This building has no 13th floor.",
+      CAPTION_707: "They knew your room number. You never told them.", DELIV_LABEL: "The parcel was addressed to your room.", MONK_7: "The wake is on 6, yet the monk said he was going to 7.",
+      ALL_BUTTONS: "Every button lit up the moment the doors opened.", HOME_EARLY: "It wasn't the 7th floor yet.", OJISAN_BACK: "The caretaker, who always nods, stood with his back to you.", KID_BACK: "The boy never once turned to face you.", NORMAL: "Nothing was wrong on that floor." },
+    gameName: "The Elevator to 7", tag: "#ElevatorTo7", room: "Room 707",
+  },
+};
+let lang = (new URLSearchParams(location.search).get("lang") === "en") ? "en" : "ja";
+const t = () => T[lang];
+
+// ============ 乱数(シード固定=同じ夜) ============
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let r = Math.imul(a ^ a >>> 15, 1 | a); r = r + Math.imul(r ^ r >>> 7, 61 | r) ^ r; return ((r ^ r >>> 14) >>> 0) / 4294967296; }; }
+const qs = new URLSearchParams(location.search);
+const newSeed = () => (Math.random() * 2 ** 32) >>> 0;
+let seed = (+qs.get("seed") >>> 0) || newSeed();
+// 記録番号: 10桁を 4-4-2 に区切る(作中の記録紙の番号として見せる)
+const serial = n => String(n).padStart(10, "0").replace(/^(\d{4})(\d{4})(\d{2})$/, "$1-$2-$3");
+
+// ============ 今夜の組み合わせ ============
+// 異変の種類 → 対応ルール(null = 説明されない異変)
+// 出会った現象ごとのスコアと★(珍しさ)。開けて正しく判断したときだけ記録される
+const PTS = {
+  // 普通の階でちゃんと待った点(定常点)。毎回閉めるだけの遊び方が損になるよう高めにする(毎回閉めると正しく遊んだ人の約半分)
+  QUIET: [600, 0],
+  R_salary: [680, 1], R_pajama: [640, 1], R_hood: [700, 1], R_woman: [760, 1], R_granny: [740, 1], R_kid: [780, 1],
+  R_mourner: [720, 1], R_funeral: [720, 1], R_a: [660, 1], R_monk: [1040, 2], R_deliv: [2870, 4], WAKE_LINE: [1930, 3],
+  SHOES: [510, 2], OLDMAN: [470, 2], WRONG_FLOOR: [560, 2], MOURNER_OFF6: [530, 2], LIGHTS_OUT: [620, 2], FINGERS: [490, 2], INDICATOR_13: [450, 2],
+  CAPTION_707: [580, 2], PROP_FOLLOW: [730, 2], OJISAN_NO_NOD: [680, 2],
+  KID_NOBUTTON: [1640, 3], MONK_7: [1480, 3], DELIV_LABEL: [3110, 4], REBOARD: [2960, 4], ALL_BUTTONS: [3240, 4], HOME_EARLY: [9870, 5], OJISAN_BACK: [1560, 3], KID_BACK: [1720, 3],
+};
+const ARULE = { WRONG_FLOOR: "R6", REBOARD: "R6", MOURNER_OFF6: "R2", OLDMAN: "R3", SHOES: "R5", KID_NOBUTTON: "R1", PROP_FOLLOW: "R11", LIGHTS_OUT: "R12", OJISAN_NO_NOD: "R13", FINGERS: null, DELIV_LABEL: null, INDICATOR_13: null, CAPTION_707: null, MONK_7: null, ALL_BUTTONS: null, HOME_EARLY: null, OJISAN_BACK: null, KID_BACK: null };
+// 三輪車と傘は左の壁ぎわで重なるので、同じ階には出さない
+const CLASH = [["tricycle", "umbrella"]];
+const unclash = (props, keep, rnd) => { for (const [a, b] of CLASH) if (props.includes(a) && props.includes(b)) { const drop = keep === a ? b : keep === b ? a : (rnd() < .5 ? a : b); props = props.filter(x => x !== drop); } return props; };
+// 階ごとに独立して変わる「普通の揺らぎ」(異変ではない)
+const PROPS = ["tricycle", "box", "umbrella"];
+// 階ごとの背景(ほぼ同じ廊下に、階ごとの目印が1つずつある)
+const PLATE = { 2: "floor-2.webp", 3: "corridor.webp", 4: "floor-4.webp", 5: "floor-5.webp", 6: "floor-6.webp", 7: "corridor.webp" };
+// 照明(どれも異変ではない)。fardark = 廊下の奥だけ暗い / shadowed = 奥の暗がりが手前の人の顔にもかかる(わざと紛らわしくしている)
+const LIGHTS = ["on", "flicker", "fardark", "shadowed"];
+const SOUNDS = ["none", "rain", "tv"];
+function buildNight(seed) {
+  const rnd = mulberry32(seed), pick = a => a[Math.floor(rnd() * a.length)];
+  const floors = [2, 3, 4, 5, 6];
+  const ev = {};
+  // 深夜なので、ほとんどの階は誰もいない。住人がいるのは約3割(6階は通夜なので約6割)
+  for (const f of floors) {
+    ev[f] = rnd() < (f === 6 ? .6 : .3) ? { ...pick(ROUTINE[f]), anomaly: null } : { p: null, board: false, anomaly: null };
+    if (f === 3 && rnd() < .9) ev[f] = { ...HOME.a, anomaly: null }; // おじさんは、ほぼ毎晩3階にいる
+    if (f === 6 && ev[f].p && rnd() < .07) ev[f] = { p: null, board: false, wake: true, cap: "wake", anomaly: null }; // まれに通夜の列(異変ではない)
+    // 普通の揺らぎでは、前の階と同じ置き物は出さない(出ると「ついてくる物」に見えてしまう)
+    const before = f > 2 ? ev[f - 1].env.props : [];
+    ev[f].env = { lights: pick(LIGHTS), sound: f === 6 ? pick(["chant", "chant", "none", "rain"]) : pick(SOUNDS), props: unclash(PROPS.filter(x => rnd() < .3 && !before.includes(x) && !(f === 2 && x === "tricycle")), null, rnd) };
+  }
+  // 異変の数: 2〜3(うち1つは説明されない異変)
+  const n = rnd() < .5 ? 2 : 3;
+  const af = [...floors].sort(() => rnd() - .5).slice(0, n).sort();
+  const uFloor = pick(af);
+  const set = (f, o) => { ev[f] = { ...o, env: ev[f].env }; };
+  for (const f of af) {
+    if (f === uFloor) {
+      // 説明されない異変(どのルールにも書かれていない)。「おかしければ閉める」で正解できる
+      const U = ["FINGERS", "INDICATOR_13"];
+      if (f === 3 && rnd() < (ev[f].p === "a" ? .15 : .5)) U.push("DELIV_LABEL"); // おじさんがいる夜は置き換えにくくする
+      if (f === 5) U.push("MONK_7");
+      if (ROUTINE[f].some(r => r.board)) U.push("CAPTION_707");
+      if (rnd() < .1) U.push("ALL_BUTTONS");        // レア
+      if (f >= 4 && rnd() < .035) U.push("HOME_EARLY"); // とてもレア
+      if (f === 3 && ev[f].p === "a" && rnd() < .6) U.push("OJISAN_BACK");
+      if (f === 4 && rnd() < .5) U.push("KID_BACK");
+      const u = pick(U);
+      // 指は右手前のドア。扉の正面に立つ人とは重ならないので、住人はそのまま(横に立つ人とは重なるので消す)
+      if (u === "FINGERS") { if (ev[f].at === "side") set(f, { p: null, board: false, anomaly: u }); else ev[f].anomaly = u; }
+      else if (u === "DELIV_LABEL") set(f, { ...HOME.deliv, anomaly: u });
+      else if (u === "INDICATOR_13") ev[f].anomaly = u;
+      else if (u === "CAPTION_707") set(f, { ...(ev[f].p && ev[f].board ? ev[f] : pick(ROUTINE[f].filter(r => r.board))), cap: "r707", anomaly: u });
+      else if (u === "MONK_7") set(f, { ...HOME.monk, press: null, cap: "monk7", anomaly: u });
+      else if (u === "ALL_BUTTONS") ev[f].anomaly = u;
+      else if (u === "HOME_EARLY") set(f, { p: null, board: false, wake: true, cap: "home", anomaly: u });
+      else if (u === "OJISAN_BACK") set(f, { ...HOME.a, p: "a_back", bow: false, anomaly: u });
+      else if (u === "KID_BACK") set(f, { ...HOME.kid, p: "kid_back", press: null, anomaly: u });
+      continue;
+    }
+    const prev = ev[f - 1];
+    const cands = ["WRONG_FLOOR", "OLDMAN", "LIGHTS_OUT"];
+    if (f !== 3) cands.push("SHOES"); // 3階はおじさんが扉の前に立つので、靴が隠れる
+    if (f !== 6) cands.push("MOURNER_OFF6");
+    if (f === 4) cands.push("KID_NOBUTTON");
+    if (prev && prev.p && prev.board && !prev.anomaly && !af.includes(f - 1)) cands.push("REBOARD");
+    if (prev && prev.env.props.length) cands.push("PROP_FOLLOW", "PROP_FOLLOW");
+    // 3階におじさんがいる夜は、おじさんがいるまま起きる異変を優先する(ほぼ毎晩3階にいるように)
+    const keepA = ["OJISAN_NO_NOD", "OJISAN_NO_NOD", "LIGHTS_OUT", ...(prev && prev.env.props.length ? ["PROP_FOLLOW"] : [])];
+    const kind = f === 3 && ev[f].p === "a" && rnd() < .85 ? pick(keepA) : pick(cands);
+    if (kind === "WRONG_FLOOR") set(f, { ...pick(Object.values(HOME).filter(h => h.board && h.f !== f)), at: "board", anomaly: kind });
+    else if (kind === "REBOARD") set(f, { ...prev, at: "board", anomaly: kind });
+    else if (kind === "MOURNER_OFF6") set(f, { p: "mourner", board: true, at: "board", anomaly: kind });
+    else if (kind === "OLDMAN") set(f, { p: "oldman", board: true, at: "board", anomaly: kind });
+    else if (kind === "KID_NOBUTTON") set(f, { ...HOME.kid, press: null, anomaly: kind });
+    else if (kind === "SHOES") set(f, { p: null, board: false, anomaly: kind }); // 靴は人に隠れないよう無人の階に置く
+    else if (kind === "LIGHTS_OUT") { ev[f].anomaly = kind; ev[f].env.lights = "on"; }
+    else if (kind === "OJISAN_NO_NOD") set(f, { ...HOME.a, bow: false, anomaly: kind });
+    else if (kind === "PROP_FOLLOW") { ev[f].anomaly = kind; ev[f].follow = pick(prev.env.props); ev[f].env.props = unclash([...new Set([...ev[f].env.props, ev[f].follow])], ev[f].follow, rnd); }
+  }
+  // 「ついてくる物」の整合性を、変化がなくなるまで直す
+  //  1) ついてくる物の階の次が普通の階なら、ついてきた物をそこには出さない
+  //  2) 1) で前の階から「ついてきた元」が消えたら、残っている物から選び直す(なければ別の異変に替える)
+  for (let it = 0; it < 5; it++) {
+    let changed = false;
+    for (const f of floors) if (f > 2 && ev[f - 1].anomaly === "PROP_FOLLOW" && ev[f].anomaly !== "PROP_FOLLOW" && ev[f].env.props.includes(ev[f - 1].follow)) {
+      ev[f].env.props = ev[f].env.props.filter(x => x !== ev[f - 1].follow); changed = true; }
+    for (const f of floors) if (ev[f].anomaly === "PROP_FOLLOW" && !ev[f - 1].env.props.includes(ev[f].follow)) {
+      ev[f].env.props = ev[f].env.props.filter(x => x !== ev[f].follow); changed = true;
+      const left = ev[f - 1].env.props;
+      if (left.length) { ev[f].follow = pick(left); ev[f].env.props = unclash([...new Set([...ev[f].env.props, ev[f].follow])], ev[f].follow, rnd); }
+      else { ev[f].anomaly = "LIGHTS_OUT"; ev[f].env.lights = "on"; delete ev[f].follow; }
+    }
+    if (!changed) break;
+  }
+  // 貼り紙: 起きる異変のルール + 埋め草で 5〜6 個
+  const need = new Set(af.map(f => ARULE[ev[f].anomaly]).filter(Boolean));
+  const pool = ["R1", "R2", "R3", "R5", "R6", "R7", "R8", "R9", "R11", "R12", "R13"].filter(r => !need.has(r)).sort(() => rnd() - .5);
+  const size = rnd() < .5 ? 5 : 6;
+  const rules = [...need, ...pool.slice(0, Math.max(0, size - need.size))].sort((x, y) => +x.slice(1) - +y.slice(1));
+  return { ev, rules };
+}
+let NIGHT = buildNight(seed);
+
+// その夜に出る画像だけを先に読み込む(全員分を読むと、最初の画面が出るまでが重くなる)
+const loaded = new Map();
+function preload(src) {
+  if (!loaded.has(src)) loaded.set(src, new Promise(res => { const im = new Image(); im.onload = im.onerror = () => res(); im.src = P + src; }));
+  return loaded.get(src);
+}
+function nightAssets(N) {
+  // 見逃したときに扉に映る老人と、その一撃の顔は、どの夜にも出うる
+  const s = new Set(["corridor.webp"]), add = k => s.add(PEOPLE[k].src), wakeLine = () => ["funeral", "mourner", "monk"].forEach(add);
+  for (const [f, e] of Object.entries(N.ev)) {
+    s.add(PLATE[f]);
+    if (e.p) add(e.p);
+    if (e.anomaly) { const d = deathOf(e); if (d.refl) add(d.refl); s.add(faceSrc(d.face)); } // ドボンで映る人と、迫る顔
+    if (e.bow) add("a_bow");
+    if (e.wake || SELF_REF.has(e.anomaly)) wakeLine(); // 通夜の列は、6階と7階の結末に出る
+    for (const pr of e.env?.props || []) s.add(`prop-${pr}.webp`);
+    if (e.anomaly === "SHOES" || e.anomaly === "FINGERS") s.add(`anom-${e.anomaly.toLowerCase()}.webp`);
+  }
+  return [...s];
+}
+let ready = Promise.resolve();
+function prepareNight() { ready = Promise.all(nightAssets(NIGHT).map(preload)); }
+
+// ============ 描画 ============
+const $ = id => document.getElementById(id);
+const stage = $("stage");
+const pct = (v, tot) => (v / tot * 100) + "%";
+function personHTML(key, pos, extra = "", withShadow = true) {
+  const pp = PEOPLE[key], h = pos.h * pp.s, w = h * AR[key], left = pos.cx - w / 2, top = pos.feet - h;
+  let s = "";
+  if (withShadow) s += `<div class="shadow" style="left:${pct(pos.cx - w * .75, 941)};top:${pct(pos.feet - 26, 1672)};width:${pct(w * 1.5, 941)};height:${pct(60, 1672)}"></div>`;
+  s += `<div class="person ${extra}" data-p="${key}" style="left:${pct(left, 941)};top:${pct(top, 1672)};height:${pct(h, 1672)};width:${pct(w, 941)}">
+    <img src="${P + pp.src}" alt=""><div class="shade" style="-webkit-mask-image:url(${P + pp.src});mask-image:url(${P + pp.src})"></div></div>`;
+  return s;
+}
+function reflHTML(list) {
+  // list: [{p, pos:{cx,feet,h}, o}] 扉(748x1124, 開口部基準)の座標に変換
+  return list.map(({ p, pos, o }) => {
+    const pp = PEOPLE[p], h = pos.h * pp.s, w = h * AR[p];
+    return `<div class="refl" style="left:${pct(pos.cx - w / 2 - 92, 748)};top:${pct(pos.feet - h - 222, 1124)};height:${pct(h, 1124)};width:${pct(w, 748)};opacity:${o}"><img src="${P + pp.src}" alt=""></div>`;
+  }).join("");
+}
+const box = (inner, off) => `<div style="position:absolute;inset:0;width:200%;left:${off}%">${inner}</div>`;
+function setMirror(list) { const r = reflHTML(list); $("mirL").innerHTML = box(r, 0); $("mirR").innerHTML = box(r, -100); }
+$("litL").innerHTML = box(`<img src="${P}door-light.webp" alt="" style="position:absolute;inset:0;width:100%;height:100%">`, 0);
+$("litR").innerHTML = box(`<img src="${P}door-light.webp" alt="" style="position:absolute;inset:0;width:100%;height:100%">`, -100);
+(function grain() { const cv = $("grain"), w = cv.width = 470, h = cv.height = 836, c = cv.getContext("2d"), im = c.createImageData(w, h);
+  for (let i = 0; i < im.data.length; i += 4) { const v = Math.random() * 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; } c.putImageData(im, 0, 0); })();
+let lit = new Set([7]);
+function paintPanel() { $("panel").innerHTML = [7, 6, 5, 4, 3, 2, 1].reverse().map(n => `<b class="${lit.has(n) ? "on" : ""}">${n}</b>`).join(""); }
+function caption(key) { const c = $("cap"); if (!key) { c.classList.remove("on"); return; } c.textContent = t().caps[key]; c.classList.add("on"); }
+function paintText() {
+  document.documentElement.lang = lang;
+  $("langMenu").querySelectorAll("[data-lang]").forEach(b => b.setAttribute("aria-checked", b.dataset.lang === lang));
+  document.title = t().gameName;
+}
+function posterHTML() {
+  return `<div class="poster"><h2>${t().title}</h2><p class="sub">${t().sub}</p><ol>${NIGHT.rules.map(r => `<li>${t().rules[r]}</li>`).join("")}<li>${t().catchAll}</li></ol><div class="note">${t().note}</div><div class="sign">${t().sign}</div></div>`;
+}
+
+// ============ 音(Web Audio で合成) ============
+let AC, hum;
+function audioInit() {
+  if (AC) return; AC = new (window.AudioContext || window.webkitAudioContext)();
+  const nb = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  AC.noise = nb;
+  const o = AC.createOscillator(); o.frequency.value = 52; const g = AC.createGain(); g.gain.value = .035; o.connect(g).connect(AC.destination); o.start();
+  const n = AC.createBufferSource(); n.buffer = nb; n.loop = true; const lp = AC.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 180;
+  const ng = AC.createGain(); ng.gain.value = .05; n.connect(lp).connect(ng).connect(AC.destination); n.start();
+  hum = { g, ng };
+}
+function env(node, t0, a, peak, dcy) { const g = AC.createGain(); g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(peak, t0 + a); g.gain.exponentialRampToValueAtTime(.0001, t0 + a + dcy); node.connect(g).connect(AC.destination); return g; }
+function sDoor() { if (!AC) return; const t0 = AC.currentTime, n = AC.createBufferSource(); n.buffer = AC.noise; const bp = AC.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.setValueAtTime(300, t0); bp.frequency.linearRampToValueAtTime(700, t0 + .9); n.connect(bp); env(bp, t0, .08, .18, .9); n.start(t0); n.stop(t0 + 1.1); }
+function sChime() { if (!AC) return; const t0 = AC.currentTime; for (const [f, dt] of [[740, 0], [587, .45]]) { const o = AC.createOscillator(); o.type = "sine"; o.frequency.value = f; env(o, t0 + dt, .01, .12, 1.4); o.start(t0 + dt); o.stop(t0 + dt + 1.6); } }
+function sTick() { if (!AC) return; const t0 = AC.currentTime, o = AC.createOscillator(); o.frequency.value = 1800; env(o, t0, .002, .08, .05); o.start(t0); o.stop(t0 + .1); }
+function sTravel(on) { if (!AC) return; const t0 = AC.currentTime; hum.g.gain.linearRampToValueAtTime(on ? .07 : .035, t0 + .4); hum.ng.gain.linearRampToValueAtTime(on ? .11 : .05, t0 + .4); }
+function sSting() { if (!AC) return; const t0 = AC.currentTime; for (const f of [98, 104, 147, 233, 311]) { const o = AC.createOscillator(); o.type = "sawtooth"; o.frequency.value = f; const lp = AC.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1400; o.connect(lp); env(lp, t0, .005, .09, 2.2); o.start(t0); o.stop(t0 + 2.4); }
+  const n = AC.createBufferSource(); n.buffer = AC.noise; env(n, t0, .002, .35, .5); n.start(t0); n.stop(t0 + .6); }
+// 階ごとの環境音(異変ではない。音を消して遊ぶ人もいるので、音だけの異変は作らない)
+let ambStop = null;
+function sAmb(kind) {
+  if (!AC || kind === "none") return;
+  const t0 = AC.currentTime, out = AC.createGain(); out.gain.setValueAtTime(0, t0); out.gain.linearRampToValueAtTime(1, t0 + .8); out.connect(AC.destination);
+  const nodes = [];
+  if (kind === "rain" || kind === "tv") {
+    const n = AC.createBufferSource(); n.buffer = AC.noise; n.loop = true; const f = AC.createBiquadFilter();
+    f.type = kind === "rain" ? "highpass" : "bandpass"; f.frequency.value = kind === "rain" ? 2500 : 900; f.Q.value = kind === "tv" ? 1.2 : .7;
+    const g = AC.createGain(); g.gain.value = kind === "rain" ? .05 : .035; n.connect(f).connect(g).connect(out); n.start(); nodes.push(n);
+    if (kind === "tv") { const l = AC.createOscillator(); l.frequency.value = 3.3; const lg = AC.createGain(); lg.gain.value = .03; l.connect(lg).connect(g.gain); l.start(); nodes.push(l); }
+  } else if (kind === "chant") {
+    for (const fr of [98, 147, 196]) { const o = AC.createOscillator(); o.type = "triangle"; o.frequency.value = fr; const g = AC.createGain(); g.gain.value = .012;
+      const l = AC.createOscillator(); l.frequency.value = .7; const lg = AC.createGain(); lg.gain.value = .01; l.connect(lg).connect(g.gain); o.connect(g).connect(out); o.start(); l.start(); nodes.push(o, l); }
+  }
+  ambStop = () => { const t1 = AC.currentTime; out.gain.linearRampToValueAtTime(0, t1 + .6); nodes.forEach(x => x.stop(t1 + .7)); ambStop = null; };
+}
+// ドボンの一撃の音:叩きつけるノイズ+不協和の金切り音+低い衝撃。環境音は hush() で消してから鳴らす
+function sScare() { if (!AC) return; const t0 = AC.currentTime;
+  const n = AC.createBufferSource(); n.buffer = AC.noise; const hp = AC.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 900; n.connect(hp); env(hp, t0, .002, .35, .35); n.start(t0); n.stop(t0 + .45);
+  for (const f of [622, 659, 932, 1245]) { const o = AC.createOscillator(); o.type = "sawtooth"; o.frequency.setValueAtTime(f, t0); o.frequency.exponentialRampToValueAtTime(f * .94, t0 + .5); const lp = AC.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 3200; o.connect(lp); env(lp, t0, .003, .05, .5); o.start(t0); o.stop(t0 + .6); }
+  const k = AC.createOscillator(); k.frequency.setValueAtTime(90, t0); k.frequency.exponentialRampToValueAtTime(35, t0 + .3); env(k, t0, .002, .4, .45); k.start(t0); k.stop(t0 + .5); }
+// 環境音を消す(一撃の前の「間」)。次に昇るとき sTravel で戻る
+function hush() { if (!AC) return; const t0 = AC.currentTime; for (const g of [hum.g.gain, hum.ng.gain]) { g.cancelScheduledValues(t0); g.setValueAtTime(g.value, t0); g.linearRampToValueAtTime(0, t0 + .6); } }
+function sDrop() { if (!AC) return; const t0 = AC.currentTime, o = AC.createOscillator(); o.frequency.setValueAtTime(120, t0); o.frequency.exponentialRampToValueAtTime(30, t0 + 1.5); env(o, t0, .01, .25, 1.6); o.start(t0); o.stop(t0 + 1.8); }
+
+// ============ 進行 ============
+const wait = ms => new Promise(r => setTimeout(r, ms));
+let streak = 0, openedAt = 0, arrivedAt = 0, hesitMs = 0, lastDeath = null, encounters = [], runToken = 0, shareUrl = "";
+let floor = 1, riders = [], log = [], seen = [], decide = null, opener = null, extend = null, skipper = null;
+const phKey = e => e.anomaly || (e.wake ? "WAKE_LINE" : e.p ? "R_" + e.p : "QUIET");
+const phName = e => { const k = phKey(e), ph = t().ph, n = e.p ? PEOPLE[e.p][lang] : "";
+  if (k.startsWith("R_")) return ph.R(n); if (k === "PROP_FOLLOW") return ph[k](t().props[e.follow]); return typeof ph[k] === "function" ? ph[k](n) : ph[k]; };
+const bank = () => seen.reduce((a, s) => a + s.pts, 0);
+// スコアは結果画面でだけ見せる(プレー中は出さない)。
+// 1つの現象の点 = 基本点(★) × 階の高さ × 連続で開けた数 × 開けるまでのためらい × 反応の速さ(異変のみ) × 暗さ
+const DOOR_OPEN_MS = 6000;
+function scoreItem(base, f, streak, closed, ms, lights, hesitMs) {
+  const boldM = 1 + Math.max(0, 4000 - hesitMs) / 8000;                // 着いてから「開」を押すまでが速いほど高い(最大1.5倍)
+  const floorM = 1 + (f - 2) * .15;                                   // 2階 1.00 〜 6階 1.60
+  const streakM = 1 + (streak - 1) * .25;                              // 通過せずに開け続けた数
+  const speedM = closed ? 1 + Math.max(0, DOOR_OPEN_MS - ms) / DOOR_OPEN_MS : 1; // 異変に気づいて閉めるまでが速いほど高い(最大約2倍)
+  const darkM = lights === "fardark" || lights === "shadowed" ? 1.2 : lights === "flicker" ? 1.1 : 1;
+  return Math.round(base * floorM * streakM * boldM * speedM * darkM);
+}
+const clock = i => `02:${String(13 + i).padStart(2, "0")}`;
+const riderPos = i => ({ cx: 380 + i * 170, feet: 1270, h: 700 });
+async function openDoors() { sDoor(); stage.classList.add("open"); await wait(950); }
+async function closeDoors() { sDoor(); stage.classList.remove("open"); await wait(950); }
+function setScene(f, e) {
+  $("plate").src = P + PLATE[f];
+  let bg = "";
+  for (const pr of e?.env?.props || []) bg += `<img class="L" src="${P}prop-${pr}.webp" alt="">`;
+  if (e?.anomaly === "SHOES") bg += `<img class="L" src="${P}anom-shoes.webp" alt="">`;
+  if (e?.anomaly === "FINGERS") bg += `<img class="L" src="${P}anom-fingers.webp" alt="">`;
+  const L = e?.env?.lights;
+  if (L === "fardark") bg += '<div class="fardark"></div>'; // 人物より後ろに置く
+  $("bgAnom").innerHTML = bg;
+  let c = "";
+  if (e && e.wake) c += WAKE_LINE();
+  if (e && e.p) {
+    c += personHTML(e.p, POS[e.at], L === "fardark" && e.at === "far" ? "infar" : "", e.at !== "far");
+    if (e.bow) c += personHTML("a_bow", POS[e.at], "alt", false); // 会釈の絵(扉が開いて少ししてから入れ替える)
+    if (e.anomaly === "DELIV_LABEL") c += `<div class="label" style="left:47.5%;top:${pct(1300 - 860 * .93, 1672)}">${t().room}</div>`;
+  }
+  $("corr").innerHTML = c;
+  $("fx").className = "corr fx";
+  // shadowed は暗がりを人物の手前に重ねる(fardark は人物の後ろ。上の bgAnom)
+  $("fx").innerHTML = (L === "flicker" ? '<div class="flicker"></div>' : L === "shadowed" ? '<div class="fardark"></div>' : "")
+    + (e?.anomaly === "LIGHTS_OUT" ? '<div class="out o1"></div><div class="out o2"></div><div class="out o3"></div>' : "");
+}
+async function travel(to) {
+  $("ind").classList.add("moving"); sTravel(true);
+  await wait(1700);
+  floor = to; $("fl").textContent = to;
+  await wait(500); sTravel(false); $("ind").classList.remove("moving");
+}
+async function start() {
+  audioInit(); $("ovPoster").classList.add("hide"); $("ovResult").classList.add("hide");
+  floor = 1; riders = []; log = []; seen = []; streak = 0; lastDeath = null; encounters = []; runToken++; lit = new Set([7]); paintPanel(); $("fl").textContent = 1;
+  stage.classList.remove("open"); setMirror([]); $("dim").style.transition = ""; $("dim").style.opacity = 0;
+  for (const f of [2, 3, 4, 5, 6]) {
+    await travel(f);
+    await ready; // 画像がまだ届いていなければ、昇っている間に待つ
+    const ok = await stop(f);
+    if (!ok) return;
+  }
+  await travel(7); await arriveHome();
+}
+async function stop(f) {
+  const e = NIGHT.ev[f], x = t().L, name = e.p ? PEOPLE[e.p][lang] : "";
+  lit.delete(f); paintPanel();
+  setScene(f, e); sChime();
+  // 開けて確かめるか(リスクあり・スコアあり)、閉で通過するか(安全・スコアなし)
+  $("openBtn").disabled = false; $("openBtn").classList.add("on"); $("closeBtn").disabled = false;
+  arrivedAt = performance.now();
+  const go = await new Promise(res => { opener = () => res(true); skipper = () => res(false); });
+  hesitMs = performance.now() - arrivedAt; opener = skipper = null; $("openBtn").classList.remove("on");
+  if (!go) { streak = 0; $("openBtn").disabled = $("closeBtn").disabled = true; sTick(); log.push([clock(log.length), f, x.passed]); await wait(500); return true; }
+  streak++;
+  $("closeBtn").disabled = true;
+  riders = riders.filter(r => r.dest !== f); // 扉を開けた階でだけ、降りる人は降りる
+  if (e.anomaly === "INDICATOR_13") $("fl").textContent = "13";
+  const litBefore = new Set(lit);
+  if (e.anomaly === "ALL_BUTTONS") { [1, 2, 3, 4, 5, 6, 7].forEach(n => lit.add(n)); setTimeout(paintPanel, 700); }
+  sAmb(e.env.sound); await openDoors();
+  if (e.anomaly === "LIGHTS_OUT") $("fx").classList.add("going");
+  openedAt = performance.now();
+  $("closeBtn").disabled = false;
+  const timers = [];
+  if (e.cap) timers.push(setTimeout(() => caption(e.cap), 1100));
+  if (e.bow) { timers.push(setTimeout(() => $("corr").classList.add("bowing"), 1200)); timers.push(setTimeout(() => $("corr").classList.remove("bowing"), 2600)); }
+  if (e.board && e.press) timers.push(setTimeout(() => { lit.add(e.press); paintPanel(); sTick(); }, 2300));
+  // 何もしなければ約6秒で閉まる。開いている間に「開」を押すと延長
+  const closed = await new Promise(res => {
+    decide = res; let to = setTimeout(() => res(false), DOOR_OPEN_MS);
+    extend = () => { clearTimeout(to); to = setTimeout(() => res(false), DOOR_OPEN_MS); timers.push(to); };
+    timers.push(to);
+  });
+  const reactMs = performance.now() - openedAt;
+  decide = extend = null; timers.forEach(clearTimeout); caption(null); $("corr").classList.remove("bowing"); $("closeBtn").disabled = true; $("openBtn").disabled = true; ambStop && ambStop();
+  $("fl").textContent = f;
+  if (e.anomaly === "ALL_BUTTONS") { lit = litBefore; paintPanel(); }
+  const isAnom = !!e.anomaly, correct = closed === isAnom, i = log.length;
+  encounters.push({ floor: f, key: phKey(e), anomaly: isAnom, correct, name: phName(e) });
+  if (correct) {
+    let line = closed ? x.closed : !e.p ? x.empty : e.board ? x.boarded(name) : x.stood(name);
+    if (!closed && e.board) { stage.querySelectorAll(".corr .person").forEach(x => x.classList.add("boarding")); riders.push({ p: e.p, dest: e.dest }); if (e.dest) { lit.add(e.dest); paintPanel(); } }
+    setMirror(riders.map((r, k) => ({ p: r.p, pos: riderPos(k), o: .26 })));
+    await closeDoors(); log.push([clock(i), f, line]);
+    const k = phKey(e); if (k && PTS[k] && PTS[k][0] > 0) seen.push({ key: k, arg: e.follow || e.p || null, name: phName(e), pts: scoreItem(PTS[k][0], f, streak, closed, reactMs, e.env.lights, hesitMs), stars: PTS[k][1] });
+    return true;
+  }
+  if (closed && !isAnom) {
+    // 異変がないのに閉めた: ドボンにはしない。その階のスコアが入らないだけ(乗ろうとしていた住人は乗らない)
+    setMirror(riders.map((r, k) => ({ p: r.p, pos: riderPos(k), o: .26 })));
+    await closeDoors(); log.push([clock(i), f, x.closed]); return true;
+  }
+  lastDeath = e;
+  if (!closed && e.board) {
+    // ドボン: 乗せた。扉が閉まると、すぐ後ろに映る
+    log.push([clock(i), f, x.letIn(name)]);
+    stage.querySelectorAll(".corr .person").forEach(x => x.classList.add("boarding"));
+    // 乗せた人が違和感の元ならその人が、すぐ後ろに映る。無関係な人なら、ほかの乗客と並んで映るだけ
+    const d = deathOf(e), others = [...riders, ...(d.refl === e.p ? [] : [{ p: e.p }])].map((r, k) => ({ p: r.p, pos: riderPos(k), o: .22 }));
+    const behind = (pos, o) => d.refl ? [{ p: d.refl, pos, o }] : [];
+    setMirror([...others, ...behind({ cx: 480, feet: 1480, h: 1180 }, .55)]);
+    await closeDoors(); sSting(); hush(); await wait(900);
+    setMirror([...others, ...behind({ cx: 480, feet: 1580, h: 1320 }, .8)]); // 一歩近づく
+    await wait(700); // 間
+    await scare(d.face); await wait(1000);
+    return result(false), false;
+  }
+  // 見逃した: 人が違和感なら、閉じた扉にその人がうっすら映る
+  const d = deathOf(e);
+  log.push([clock(i), f, closed ? x.wrongClose : x.notClosed]);
+  await closeDoors(); sDrop(); hush(); await wait(600);
+  setMirror([...riders.map((r, k) => ({ p: r.p, pos: riderPos(k), o: .22 })), ...(d.refl ? [{ p: d.refl, pos: { cx: 480, feet: 1480, h: 1180 }, o: .45 }] : [])]);
+  await wait(1100); // 間
+  await scare(d.face); await wait(1000);
+  return result(false), false;
+}
+// ============ ドボンの一撃:違和感に応じた顔が画面いっぱいに迫り、すぐ暗転する(約0.4秒) ============
+// 人そのものが違和感のもの。このときはその人の顔(通夜の列は先頭の葬儀社の男)
+const PERSON_ANOM = new Set(["OLDMAN", "OJISAN_NO_NOD", "MOURNER_OFF6", "CAPTION_707", "WRONG_FLOOR", "REBOARD", "MONK_7", "DELIV_LABEL", "OJISAN_BACK", "KID_NOBUTTON", "KID_BACK", "HOME_EARLY"]);
+// 人物ごとの顔。男の子の顔は出さず「男の子の後ろにいた女」にする(ガードレール「子どもを死者として扱わない」)。姿勢違いは元の人物の顔
+const SCARE_FACE = { kid: "kidwoman", kid_back: "kidwoman", a_bow: "a", a_back: "a" };
+// 物や現象の違和感の顔(そこにいた人は無関係なので出さない)
+const ENV_FACE = { FINGERS: "eye", SHOES: "shoes", INDICATOR_13: "floor13", LIGHTS_OUT: "dark", PROP_FOLLOW: "shadow", ALL_BUTTONS: "profile" };
+// 生成した縦長の顔(画面と同じ比率)の焦点 [x%, y%]。それ以外は人物写真から切り出した横長の顔
+const FULL_FACE = { eye: [49, 40], shoes: [61, 32], floor13: [50, 40], dark: [52, 32], shadow: [52, 25], profile: [51, 28], kidwoman: [56, 36] };
+// refl: 扉に映る人物(なければ映らない) / face: 迫ってくる顔
+function deathOf(e) {
+  if (PERSON_ANOM.has(e.anomaly)) { const p = e.p || "funeral"; return { refl: p, face: SCARE_FACE[p] || p }; }
+  return { refl: null, face: ENV_FACE[e.anomaly] || "oldman" };
+}
+const faceSrc = k => `face-${k}.webp`;
+async function scare(face) {
+  const sc = $("scare"), src = faceSrc(face), fp = FULL_FACE[face];
+  await preload(src);
+  const st = fp ? ` style="object-position:${fp[0]}% ${fp[1]}%;transform-origin:${fp[0]}% ${fp[1]}%"` : "";
+  sc.className = "scare" + (fp ? " full" : "");
+  sc.innerHTML = `<img src="${P + src}" alt=""${st}><img class="ghost" src="${P + src}" alt=""${st}>`; // ずれて重なる残像
+  sc.classList.add("on"); sScare(); if (navigator.vibrate) navigator.vibrate(200);
+  await wait(380);
+  const d = $("dim"); d.style.transition = "none"; d.style.opacity = 1; // 一瞬で黒
+  sc.className = "scare"; sc.innerHTML = "";
+}
+const WAKE_LINE = () => personHTML("funeral", { cx: 560, feet: 990, h: 400 }) + personHTML("mourner", { cx: 620, feet: 1060, h: 500 }) + personHTML("monk", { cx: 700, feet: 1150, h: 640 });
+// 自分の部屋(707)を指す異変。開けて見届けた夜だけ、7階で通夜の列が迎える
+const SELF_REF = new Set(["DELIV_LABEL", "MONK_7", "HOME_EARLY"]);
+async function arriveHome() {
+  const called = encounters.some(e => SELF_REF.has(e.key) && e.correct);
+  setMirror([]); $("plate").src = P + "corridor.webp"; $("bgAnom").innerHTML = ""; $("fx").innerHTML = "";
+  $("corr").innerHTML = called ? WAKE_LINE() : ""; // 見届けていなければ、誰もいない自分の階
+  sChime();
+  $("openBtn").disabled = false; $("openBtn").classList.add("on");
+  await new Promise(res => opener = res); opener = null; $("openBtn").classList.remove("on"); $("openBtn").disabled = true;
+  await openDoors();
+  if (called) setTimeout(() => caption("home"), 1500);
+  await wait(called ? 4200 : 3000); caption(null);
+  $("dim").style.opacity = 1; await wait(900);
+  log.push([clock(log.length), 7, called ? t().L.home : t().L.empty]); result(true);
+}
+function repHTML(home) {
+  const x = t();
+  const items = seen.length ? seen.map(it => `<div class="it"><span><span class="st">${it.stars ? "★".repeat(it.stars) : ""}</span>${it.name}</span><span>${x.yen(it.pts)}</span></div>`).join("") : `<div class="it"><span>${x.none}</span></div>`;
+  return `<div class="rep"><h4>${x.repTitle}</h4>${items}
+    <div class="tot ${home ? "" : "lost"}"><span>${x.total}</span><span>${x.yen(bank())}</span></div>
+    ${home ? "" : `<div class="void">${x.void}</div>`}</div>`;
+}
+// ドボンしたとき、何が起きていたかを1行で明かす(次の挑戦で活かせるように)
+function whyHTML() {
+  const e = lastDeath; if (!e) return "";
+  const w = t().why[e.anomaly || "NORMAL"], n = e.p ? PEOPLE[e.p][lang] : "", h = e.p && HOME[e.p] ? HOME[e.p].f : "", pr = e.follow ? t().props[e.follow] : "";
+  return `<div class="why"><b>${t().whyTitle}</b>${typeof w === "function" ? w(n, h, pr) : w}</div>`;
+}
+function logHTML(home) {
+  const x = t();
+  return `<div class="log"><h3>${x.logTitle}</h3><div class="no">${x.night(seed)}</div>
+    ${log.map(([tm, f, l]) => `<div class="ln"><span>${tm}</span><span>${f}F</span><span>${l}</span></div>`).join("")}
+    ${home ? "" : `<div class="cut">${x.L.cut}</div>${whyHTML()}`}
+    ${repHTML(home)}</div>`;
+}
+// X のロゴ(about.x.com のブランドツールキットのページに載っているものと同じ形)
+const X_LOGO = `<svg viewBox="0 0 1200 1227" aria-hidden="true"><path d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163ZM569.165 687.828L521.697 619.934L144.011 79.6944H306.615L611.412 515.685L658.88 583.579L1055.08 1150.3H892.476L569.165 687.854V687.828Z"/></svg>`;
+// シェア文。出会った現象は載せない(これから遊ぶ人のネタバレになる)。記録番号も載せない(同じ夜は渡さない)
+function shareText(home) {
+  const x = t();
+  return [x.gameName, home ? x.home2 : x.cutAt(floor), `${x.rewardLabel} ${x.yen(home ? bank() : 0)}`, x.tag].join("\n");
+}
+function shareLinks(text) {
+  const x = t(), u = encodeURIComponent(shareUrl), tx = encodeURIComponent(text);
+  return `<a class="btn x" target="_blank" rel="noopener" aria-label="${x.share}" href="https://x.com/intent/tweet?text=${tx}&url=${u}">${x.xBtn(X_LOGO)}</a>
+    <a class="lineImg" target="_blank" rel="noopener" href="https://social-plugins.line.me/lineit/share?url=${u}"><img src="${P}line-share-${lang}.png" alt="${x.line}"></a>
+    <button class="btn" id="img">${x.image}</button><button class="btn" id="cp">${x.copy}</button>`;
+}
+function result(home) {
+  const x = t(), text = shareText(home);
+  // シェア用のページは結果の種類ごとの静的ファイル(scripts/build-cards.mjs)。開いた人は新しい夜を遊ぶ
+  shareUrl = `${location.origin}/s/${lang}-${home ? 7 : floor}`;
+  const ov = $("ovResult");
+  ov.innerHTML = logHTML(home) + `<div class="actions">${shareLinks(text)}<button class="btn primary wide" id="replay">${x.replay}</button></div>`;
+  ov.classList.remove("hide");
+  $("cp").onclick = async () => { try { await navigator.clipboard.writeText(text + "\n" + shareUrl); $("cp").textContent = x.copied; } catch { } };
+  $("img").onclick = () => shareImage(home);
+  $("replay").onclick = () => {
+    seed = newSeed(); history.replaceState(null, "", `?seed=${seed}${lang === "en" ? "&lang=en" : ""}`); NIGHT = buildNight(seed); prepareNight(); showPoster(); };
+  window.__last = { home, text, url: shareUrl };
+  submitRun(home);
+}
+// サーバーに結果を送り、順位を結果画面に足す。通信できないときは何も出さない
+async function submitRun(home) {
+  const token = runToken, x = t();
+  const body = { seed, lang, home, reached: floor, score: home ? bank() : 0,
+    encounters: encounters.map(({ floor, key, anomaly, correct }) => ({ floor, key, anomaly, correct })) };
+  let res;
+  try {
+    const r = await fetch("/api/runs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    if (!r.ok) return; res = await r.json();
+  } catch { return; }
+  if (token !== runToken || !res || !home || !res.rank) return; // もう次のプレイが始まっている/順位は帰り着いたときだけ
+  const log = $("ovResult").querySelector(".log");
+  if (log) log.insertAdjacentHTML("beforeend", `<div class="tally"><h4>${x.tallyTitle}</h4><div>${x.rank(res.rank)}</div></div>`);
+}
+
+// ストーリーズなどに載せる縦長の画像(1080x1920)。サーバーを使わず、ブラウザで描く
+const loadImg = src => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = P + src; });
+function drawCover(c, im, x, y, w, h) {
+  const s = Math.max(w / im.naturalWidth, h / im.naturalHeight), sw = w / s, sh = h / s;
+  c.drawImage(im, (im.naturalWidth - sw) / 2, (im.naturalHeight - sh) / 2, sw, sh, x, y, w, h);
+}
+function fitText(c, text, weight, size, maxW) {
+  do c.font = `${weight} ${size}px system-ui, -apple-system, "Hiragino Sans", sans-serif`; while (c.measureText(text).width > maxW && (size -= 2) > 20);
+}
+async function storyImage(home) {
+  const x = t(), W = 1080, H = 1920, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const c = cv.getContext("2d");
+  const [plate, dl, dr] = await Promise.all(["corridor.webp", "door-l.webp", "door-r.webp"].map(loadImg));
+  c.drawImage(plate, 0, 0, W, H);
+  // 途切れたときは扉が閉じたところ(開口部は .doors と同じ位置)
+  if (!home) { const dx = W * .098, dy = H * .133, dw = W * .796, dh = H * .672; drawCover(c, dl, dx, dy, dw / 2, dh); drawCover(c, dr, dx + dw / 2, dy, dw / 2, dh); }
+  c.fillStyle = "rgba(0,0,0,.35)"; c.fillRect(0, 0, W, H);
+  const g = c.createLinearGradient(0, H * .5, 0, H); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(.45, "rgba(0,0,0,.88)"); g.addColorStop(1, "rgba(0,0,0,.95)");
+  c.fillStyle = g; c.fillRect(0, H * .5, W, H * .5);
+  const L = 90, maxW = W - L * 2;
+  c.textBaseline = "alphabetic";
+  c.fillStyle = "#9d9a92"; fitText(c, x.logTitle, 600, 36, maxW); c.fillText(x.logTitle, L, 1370);
+  c.fillStyle = home ? "#f1eee6" : "#e0907f"; const res = home ? x.home2 : x.cutAt(floor); fitText(c, res, 800, 92, maxW); c.fillText(res, L, 1490);
+  c.fillStyle = "#f1eee6"; const sc = `${x.rewardLabel} ${x.yen(home ? bank() : 0)}`; fitText(c, sc, 700, 64, maxW); c.fillText(sc, L, 1600);
+  c.fillStyle = "#c9c6bd"; const tag = x.tag === `#${x.gameName}` ? x.tag : `${x.gameName}  ${x.tag}`; fitText(c, tag, 600, 44, maxW); c.fillText(tag, L, 1760);
+  c.fillStyle = "#86837c"; fitText(c, location.host, 500, 34, maxW); c.fillText(location.host, L, 1820);
+  return new Promise(res => cv.toBlob(res, "image/png"));
+}
+async function shareImage(home) {
+  const x = t(), blob = await storyImage(home);
+  const file = new File([blob], "elevator-to-7.png", { type: "image/png" });
+  // 共有メニューに画像だけを渡す(iOS では URL を一緒に渡すと画像が落ちることがある)
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file] }); return; } catch (e) { if (e.name === "AbortError") return; }
+  }
+  // 共有メニューが使えない(PC・アプリ内ブラウザなど)ときは、画像を出して保存してもらう
+  document.querySelector(".imgview")?.remove(); // 連打しても重ならないように
+  const url = URL.createObjectURL(blob), v = document.createElement("div");
+  v.className = "ov imgview";
+  v.innerHTML = `<img src="${url}" alt=""><div class="hint">${x.saveHint}</div>
+    <div class="row"><a class="btn primary" href="${url}" download="elevator-to-7.png">${x.save}</a><button class="btn" id="imgClose">${x.close}</button></div>`;
+  stage.appendChild(v);
+  v.querySelector("#imgClose").onclick = () => { v.remove(); URL.revokeObjectURL(url); };
+}
+function showPoster() {
+  $("dim").style.transition = ""; $("dim").style.opacity = 0; $("ovResult").classList.add("hide");
+  $("ovPoster").innerHTML = posterHTML() + `<div class="intro">${t().intro}</div><button class="go" id="go">7<small>${t().go}</small></button>`;
+  $("ovPoster").classList.remove("hide"); $("go").onclick = start;
+}
+$("closeBtn").onclick = () => { if (skipper) skipper(); else if (decide) { sTick(); decide(true); } };
+$("openBtn").onclick = () => { sTick(); if (opener) opener(); else if (extend) extend(); };
+// 貼り紙は乗る前(最初の画面)にしか読めない。途中で見ようとすると字幕だけ出す
+$("paper").onclick = () => { if ($("ovPoster").classList.contains("hide") && $("ovResult").classList.contains("hide")) { caption("noturn"); setTimeout(() => caption(null), 1800); } };
+// 言語の一覧。地球のマークで開き、選ぶか外を押すか Esc で閉じる
+const closeLang = () => { $("langMenu").hidden = true; $("lang").setAttribute("aria-expanded", "false"); };
+$("lang").onclick = e => { e.stopPropagation(); const open = $("langMenu").hidden; $("langMenu").hidden = !open; $("lang").setAttribute("aria-expanded", String(open)); };
+$("langMenu").onclick = e => {
+  const b = e.target.closest("[data-lang]"); if (!b) return;
+  closeLang(); if (b.dataset.lang === lang) return;
+  lang = b.dataset.lang; paintText(); if (!$("ovPoster").classList.contains("hide") && $("go")) showPoster();
+};
+document.addEventListener("click", e => { if (!e.target.closest("#langBox")) closeLang(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeLang(); });
+
+// 貼り紙は文字だけなので、すぐに出す。その夜に出る画像は、読んでいる間に裏で読み込む
+$("plate").src = P + "corridor.webp"; paintPanel(); paintText(); prepareNight(); showPoster();
+window.__dbg = { get NIGHT() { return NIGHT; }, get seed() { return seed; }, decide: v => decide && decide(v), open: () => opener && opener(), skip: () => skipper && skipper(), buildNight };
+</script>
+</body>
+</html>

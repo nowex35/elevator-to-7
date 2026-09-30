@@ -1,0 +1,10 @@
+Use case: game-asset
+Asset type: prop variant of an existing background scene for a spot-the-difference horror game. Everything except the one added object must stay identical.
+
+Change exactly ONE thing: add one clear plastic vinyl umbrella, closed, hanging by its curved handle from the top of the LEFT concrete handrail wall near the elevator, in the nearest part of the corridor. Correct size for its distance, correct contact shadow on the floor, lit by the same cold fluorescent light.
+
+Keep everything else exactly the same: camera, perspective, elevator door frame, corridor, lighting, colors, all doors, plant, umbrella, handrail wall, ceiling lights, style, resolution and aspect ratio. Do not add or remove any other object.
+
+Constraints: no text, no numbers, no logos, no watermarks, no people.
+
+Output handling: save the edited image exactly as produced. Do NOT run any cleanup, masking or chroma-key script.

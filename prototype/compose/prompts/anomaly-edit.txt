@@ -1,0 +1,8 @@
+Use case: game-asset
+Asset type: "anomaly" variant of an existing background scene for a spot-the-difference horror game. The player must compare it with the original, so everything except the one change must stay identical.
+
+Change exactly ONE thing: the third apartment door on the right side of the corridor (counting from the nearest door) is now slightly ajar, opened inward by a narrow gap (a few centimeters). Inside the gap is pitch darkness, and four thin, pale, human fingers are gripping the edge of the door from inside, at about the height of a doorknob. Only the fingers are visible, no hand, no arm, no face.
+
+Keep everything else exactly the same: the camera position, the perspective, the elevator door frame, the corridor, the lighting, the colors, all other doors, the plant, the umbrella, the handrail wall, the ceiling lights, the art style, the resolution and the aspect ratio. Do not add or remove any other object.
+
+Constraints: no text, no numbers, no logos, no watermarks, no blood, no gore.

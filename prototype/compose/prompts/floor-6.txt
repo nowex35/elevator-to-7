@@ -1,0 +1,10 @@
+Use case: game-asset
+Asset type: per-floor variant of an existing background scene (the same apartment building corridor, a different floor). It must look almost identical so the player barely notices; only one fixed landmark differs.
+
+Change exactly ONE thing: add one tall white Japanese funeral flower stand (white chrysanthemums arranged on a stand, no ribbon with writing, no text) standing beside the FOURTH apartment door on the right side, far down the corridor. Correct size for its distance, correct contact shadow, lit by the same cold fluorescent light.
+
+Keep everything else exactly the same: camera, perspective, elevator door frame, corridor, lighting, colors, all doors, plant, umbrella, handrail wall, ceiling lights, style, resolution and aspect ratio. Do not add or remove any other object.
+
+Constraints: no text, no numbers, no letters, no logos, no watermarks, no people.
+
+Output handling: save the edited image exactly as produced. Do NOT run any cleanup, masking or chroma-key script.

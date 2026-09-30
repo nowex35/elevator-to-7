@@ -1,0 +1,16 @@
+Use case: game-asset
+Asset type: cut-out character sprite for a vertical 2D photographic horror game set in an old Japanese apartment building (danchi) at night. A resident who may board the elevator.
+
+Subject: an ordinary very old Japanese woman in her eighties, small, bent forward at the waist, thin gray hair tied back, deeply wrinkled face with a small closed-mouth smile that does not reach her eyes, wearing a dull brown knitted vest over a floral blouse and loose dark trousers, pushing a small old shopping cart (a wheeled walker bag) in front of her.
+
+Look: NOT glamorous, NOT a model, NOT beautiful or handsome. A plain, real-looking ordinary person you would pass without noticing: imperfect skin, pores, dark circles, slightly unkempt hair, worn everyday clothes. Photographed like a candid, slightly harsh night photo, not a portrait session. The expression is empty and flat, and the eyes look directly into the camera, holding the stare a little too long. Subtly unsettling, but nothing supernatural, no makeup effects, no gore.
+
+Framing: full body from head to feet, standing, facing the camera, centered, the whole figure fits in the frame with a small margin above the head and below the feet. Camera at chest height, straight on.
+Mood / lighting: lit only by a single cold overhead fluorescent tube slightly in front and above, like standing in a dim apartment corridor at night: shadows in the eye sockets and under the chin, slightly underexposed, desaturated, subtle film grain like a night smartphone photo. NOT studio light, NOT soft beauty light.
+Style: photorealistic.
+Aspect: portrait.
+Background: a perfectly flat, uniform, solid pure green chroma-key background (#00FF00), no gradient, no floor, no shadow on the background, so the person can be cut out cleanly. No green clothing or green objects, no green light spill on the person.
+
+Constraints: no text, no readable writing, no logos, no watermarks, not resembling any real or famous person, fully clothed, not gory.
+
+Output handling: save the generated image exactly as produced by image_gen. Do NOT remove the green background, do NOT run any chroma-key, masking or cleanup script, do NOT edit the pixels in any way.

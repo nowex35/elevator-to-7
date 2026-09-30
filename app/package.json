@@ -1,0 +1,16 @@
+{
+  "name": "elevator-to-7",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "db:migrate:local": "wrangler d1 migrations apply night-elevator --local",
+    "build:cards": "node scripts/build-cards.mjs",
+    "types": "wrangler types"
+  },
+  "devDependencies": {
+    "@resvg/resvg-wasm": "^2.6.2",
+    "satori": "^0.32.0",
+    "wrangler": "^4.144.0"
+  }
+}

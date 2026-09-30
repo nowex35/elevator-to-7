@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // workers.dev の URL の一部になる(elevator-to-7.<アカウント>.workers.dev)
+  "name": "elevator-to-7",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-15",
+  // ゲーム本体・シェア用ページ・カード画像は静的ファイル(無料・回数無制限)。/api だけ Worker で処理する
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  // 公開先のアカウントは書かない。この app ディレクトリには wrangler の auth profile "nowex35"(nowex35.com を持つアカウント)を結び付けてある。
+  // ほかの環境で動かすときは、環境変数 CLOUDFLARE_ACCOUNT_ID で渡す
+  // 公開先。DNS レコードと証明書は、デプロイ時に Cloudflare が作る(nowex35.com のゾーン)
+  "routes": [{ "pattern": "elevator7.nowex35.com", "custom_domain": true }],
+  // 遊んだ記録と順位
+  "d1_databases": [
+    { "binding": "DB", "database_name": "night-elevator", "database_id": "641499dd-cf04-45d6-b374-95fcfee3426c", "migrations_dir": "./migrations" }
+  ],
+  "observability": { "enabled": true }
+}

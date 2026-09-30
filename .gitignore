@@ -1,0 +1,15 @@
+node_modules/
+.wrangler/
+.dev.vars
+.DS_Store
+.cache/
+
+# フォント本体は入れない(SIL OFL。入手先は assets-src/fonts/LICENSE-NotoSansJP.txt)
+assets-src/fonts/*.ttf
+
+# 作業場所を移したときにできた古い複製(最新は prototype/ と docs/)
+/compose/
+/mocks/
+/play/
+/scenario.md
+/research-summary.md

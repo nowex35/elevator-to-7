@@ -1,0 +1,11 @@
+Noto Sans JP
+(c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://scripts.sil.org/OFL
+
+フォント本体(NotoSansJP[wght].ttf)はリポジトリに入れていない(.gitignore)。
+SNS のカード画像を作るとき(app/scripts/build-cards.mjs)だけに使う。配信はしない(カードは PNG に焼き込む)。
+入手先: Google Fonts の Noto Sans JP(可変ウェイト版)
+  https://fonts.google.com/noto/specimen/Noto+Sans+JP
+  https://github.com/google/fonts/tree/main/ofl/notosansjp
+このフォルダに NotoSansJP[wght].ttf として置く。
